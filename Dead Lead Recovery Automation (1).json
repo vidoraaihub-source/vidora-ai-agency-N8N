@@ -1,0 +1,2009 @@
+{
+  "name": "Dead Lead Recovery Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "45d1b62d-0afa-4f28-9641-1ea27d10bdd1",
+      "name": "Daily 9 AM Scan",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2512,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<YOUR_NOTION_DATABASE_ID>"
+        },
+        "limit": 100,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Last Contacted|date",
+              "condition": "before",
+              "date": "={{ $now.minus({ days: 90 }).plus({ seconds: 1 }).toISO() }}"
+            },
+            {
+              "key": "Recovery Status|select",
+              "condition": "is_empty"
+            },
+            {
+              "key": "Replied|checkbox",
+              "condition": "is_not_true"
+            },
+            {
+              "key": "Opted Out|checkbox",
+              "condition": "is_not_true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "18608b89-4ea1-4aeb-9a4c-e6a0f0dbe697",
+      "name": "Fetch Inactive Leads",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -2288,
+        576
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.properties.Email.email }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.properties['Opted Out'].checkbox }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "89686542-dfc0-4ca4-a3a7-b0a0e3891559",
+      "name": "Filter Eligible Leads",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -2080,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"You are a premium lead recovery specialist writing the Stage 1 re-engagement email.\\n\\nLead brief:\\n\" + $json.leadBrief + \"\\n\\nRules:\\n- Subject line: curiosity-driven, specific, and 2 to 5 words.\\n- Body: 2 to 4 short sentences that sound like a real human.\\n- The first sentence should feel personal and direct, using the lead context naturally.\\n- If leadTier is high, be slightly more direct and assume some familiarity.\\n- If leadTier is low, keep the tone lighter and lower-pressure.\\n- Do not use cliches, generic check-ins, or hype.\\n- The SMS must be a lighter version of the email, one sentence max, and only send if the lead is SMS eligible.\\n- Ask one simple question that is easy to answer.\\n\\nReturn only valid JSON with these fields:\\n{\\n  \\\"subject\\\": string,\\n  \\\"body\\\": string,\\n  \\\"sms\\\": string\\n}\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a sales copywriter. Always return only valid JSON. No markdown, no backticks, no explanation."
+        }
+      },
+      "id": "d5bb8516-71b2-466f-a563-a1b78293106c",
+      "name": "AI Write Stage 1 Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1648,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "49d1b93c-877a-492d-b0d0-550c17f5c14f",
+      "name": "OpenAI Model (Stage 1)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1648,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"subject\": \"Quick question\", \"body\": \"Hi John, ...\", \"sms\": \"Hey John, ...\" }"
+      },
+      "id": "792d9662-f661-45da-a6ae-ec36ccf00588",
+      "name": "Output Parser (Stage 1)",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1504,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"from\": \"Your Name <hello@yourdomain.com>\", \"to\": [$('Fetch Inactive Leads').item.json.properties.Email.email], \"subject\": $json.subject, \"html\": \"<p>\" + $json.body.replace(/\\n/g, '</p><p>') + \"</p>\" } }}",
+        "options": {}
+      },
+      "id": "f6a6fa9f-a330-4266-8358-b6ab41e8e3b4",
+      "name": "Send Stage 1 Email (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -928,
+        256
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Inactive Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "In Progress"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 1
+            },
+            {
+              "key": "Recovery Started|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6a5c6ebb-b572-4319-8a31-aec9b6f8b893",
+      "name": "Lock Stage 1 Lead",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1184,
+        256
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "stage-1-email-failed",
+              "leftValue": "={{ !!$json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f639f4f4-931d-4baa-8ac3-8eb4a1443967",
+      "name": "Stage 1 Email Send Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -560,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "from": "<YOUR_TWILIO_NUMBER>",
+        "to": "={{ $('Fetch Inactive Leads').item.json.properties.Phone.phone_number }}",
+        "message": "={{ $('AI Write Stage 1 Email').item.json.sms }}",
+        "options": {}
+      },
+      "id": "3643311c-9c3f-4312-be1d-e25b86d5add1",
+      "name": "Send Stage 1 SMS (Twilio)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [
+        288,
+        480
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "stage-1-sms-failed",
+              "leftValue": "={{ !!$json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c7a07a6f-9910-4b2f-8b6c-24aa9bf67abb",
+      "name": "Stage 1 SMS Send Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Send Failed: Stage 1 SMS for *\" + $('Lead Recovery Intelligence - Stage 1').item.json.leadName + \"* (\" + $('Lead Recovery Intelligence - Stage 1').item.json.email + \")\\nStatus: Send Failed\\nError: \" + (($json.error && ($json.error.message || $json.error.description || $json.error)) || 'Unknown error') + \"\\nAction: SMS should be reviewed manually.\" }}",
+        "otherOptions": {}
+      },
+      "id": "fe22a078-68cc-4729-935c-787a268db3df",
+      "name": "Slack Stage 1 SMS Send Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        912,
+        464
+      ],
+      "webhookId": "0b1d4987-6c87-4ae4-a4a5-2a9c5c3d3f71"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Inactive Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "In Progress"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 1
+            },
+            {
+              "key": "Recovery Started|date"
+            },
+            {
+              "key": "Stage 1 Sent|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "31d2ada1-2f99-4a9a-bfc0-60ec844fd035",
+      "name": "Update Notion Stage 1",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -352,
+        512
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Send Failed: Stage 1 email for *\" + $('Lead Recovery Intelligence - Stage 1').item.json.leadName + \"* (\" + $('Lead Recovery Intelligence - Stage 1').item.json.email + \")\\nStatus: Send Failed\\nError: \" + (($json.error && ($json.error.message || $json.error.description || $json.error)) || 'Unknown error') + \"\\nAction: Lead marked for review.\" }}",
+        "otherOptions": {}
+      },
+      "id": "46ae9d9b-b644-4f4a-b088-48402ff7ea66",
+      "name": "Slack Stage 1 Send Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c3ccf8d9-7f76-4e6e-8b57-e29fffe57c91"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Dead lead entered recovery: *\" + $('Lead Recovery Intelligence - Stage 1').item.json.leadName + \"* (\" + $('Lead Recovery Intelligence - Stage 1').item.json.email + \")\\nScore: \" + $('Lead Recovery Intelligence - Stage 1').item.json.leadScore + \"/100\\nTier: \" + $('Lead Recovery Intelligence - Stage 1').item.json.leadTier + \"\\nRecovery phase: \" + $('Lead Recovery Intelligence - Stage 1').item.json.recoveryPhase + \"\\nSend mode: \" + $('Lead Recovery Intelligence - Stage 1').item.json.sendMode + \"\\nStage 1 email\" + ($('Lead Recovery Intelligence - Stage 1').item.json.sendMode === 'email_plus_sms' ? ' + SMS' : '') + \" sent.\" }}",
+        "otherOptions": {}
+      },
+      "id": "3347922b-b033-4c03-9e78-d6711770f922",
+      "name": "Slack Notify Stage 1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -160,
+        720
+      ],
+      "webhookId": "6bf5e7aa-f6c3-4efc-a953-b642e451a76a"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "4291bf9b-269a-4ecf-9d07-71504e2a9fe4",
+      "name": "Daily Follow-up Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2560,
+        1424
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<YOUR_NOTION_DATABASE_ID>"
+        },
+        "limit": 1000,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Recovery Stage|number",
+              "condition": "equals",
+              "numberValue": 1
+            },
+            {
+              "key": "Stage 1 Sent|date",
+              "condition": "before",
+              "date": "={{ $now.minus({ days: 3 }).plus({ seconds: 1 }).toISO() }}"
+            },
+            {
+              "key": "Replied|checkbox",
+              "condition": "is_not_true"
+            },
+            {
+              "key": "Opted Out|checkbox",
+              "condition": "is_not_true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "526f0fcc-1ac9-4973-82ff-dcaeda2261f1",
+      "name": "Fetch Stage 2 Ready Leads",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -2320,
+        1216
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"You are a premium lead recovery specialist writing the Stage 2 follow-up email.\\n\\nLead brief:\\n\" + $json.leadBrief + \"\\n\\nRules:\\n- This lead already received Stage 1.\\n- Lead with a new angle: value, proof, a concrete example, or a shortcut.\\n- Reference the previous touch naturally, without sounding automated.\\n- If leadTier is high, be more confident and decisive.\\n- If leadTier is low, be more concise and permission-based.\\n- Do not repeat the Stage 1 wording.\\n- Keep it under 3 sentences.\\n- End with a direct yes/no or short-answer question.\\n- Sound helpful, calm, and specific.\\n\\nReturn only valid JSON:\\n{\\n  \\\"subject\\\": string,\\n  \\\"body\\\": string\\n}\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a sales copywriter. Always return only valid JSON. No markdown, no backticks, no explanation."
+        }
+      },
+      "id": "0536ebd2-15e8-4662-87f8-4a70f1be33e2",
+      "name": "AI Write Stage 2 Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1808,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "97d1fd94-9ba7-458f-b0d1-d2360313ef1e",
+      "name": "OpenAI Model (Stage 2)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1808,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"subject\": \"Quick question\", \"body\": \"Hi John, ...\" }"
+      },
+      "id": "eb16592b-12d8-4469-a747-13bbad209438",
+      "name": "Output Parser (Stage 2)",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1664,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"from\": \"Your Name <hello@yourdomain.com>\", \"to\": [$json.properties.Email.email], \"subject\": $('AI Write Stage 2 Email').item.json.subject, \"html\": \"<p>\" + $('AI Write Stage 2 Email').item.json.body.replace(/\\n/g, '</p><p>') + \"</p>\" } }}",
+        "options": {}
+      },
+      "id": "342a6c45-8deb-46ed-9847-b18a3083ebb0",
+      "name": "Send Stage 2 Email (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1216,
+        1008
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "stage-2-email-failed",
+              "leftValue": "={{ !!$json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "264c6fe0-d1ba-4e9a-b5d7-596197545fc8",
+      "name": "Stage 2 Email Send Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -976,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Stage 2 Ready Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "In Progress"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 2
+            },
+            {
+              "key": "Stage 2 Sent|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c5b927f6-d2a6-418d-9e7a-cfba9b1fc301",
+      "name": "Update Notion Stage 2",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -784,
+        1216
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Send Failed: Stage 2 email for *\" + $('Lead Recovery Intelligence - Stage 2').item.json.leadName + \"* (\" + $('Lead Recovery Intelligence - Stage 2').item.json.email + \")\\nStatus: Send Failed\\nError: \" + (($json.error && ($json.error.message || $json.error.description || $json.error)) || 'Unknown error') + \"\\nAction: Lead marked for review.\" }}",
+        "otherOptions": {}
+      },
+      "id": "079cf5d0-200d-430e-957d-6417fc34547c",
+      "name": "Slack Stage 2 Send Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -352,
+        992
+      ],
+      "webhookId": "2b1bcf90-2eb1-4cb4-9a3f-42d20bc3f2c2"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Stage 2 Ready Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "In Progress"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 1
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "abba0107-1550-475c-9b77-60c83285e6a3",
+      "name": "Lock Stage 2 Lead",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1456,
+        1008
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "<YOUR_NOTION_DATABASE_ID>"
+        },
+        "limit": 1000,
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Recovery Stage|number",
+              "condition": "equals",
+              "numberValue": 2
+            },
+            {
+              "key": "Stage 2 Sent|date",
+              "condition": "before",
+              "date": "={{ $now.minus({ days: 5 }).plus({ seconds: 1 }).toISO() }}"
+            },
+            {
+              "key": "Replied|checkbox",
+              "condition": "is_not_true"
+            },
+            {
+              "key": "Opted Out|checkbox",
+              "condition": "is_not_true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8be9abf8-eb4e-4ea3-a52a-afa56da5ab8f",
+      "name": "Fetch Stage 3 Ready Leads",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -2336,
+        1616
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"You are a premium lead recovery specialist writing the final Stage 3 breakup email.\\n\\nLead brief:\\n\" + $json.leadBrief + \"\\n\\nRules:\\n- This is the final email, so be clear but respectful.\\n- No guilt, no pressure, no gimmicks.\\n- Make the door feel open without chasing.\\n- If leadTier is high, preserve more confidence in the close.\\n- If leadTier is low, make the close softer and more final.\\n- Keep it under 3 sentences.\\n- End with one clean question or a graceful opt-out style close.\\n\\nReturn only valid JSON:\\n{\\n  \\\"subject\\\": string,\\n  \\\"body\\\": string\\n}\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a sales copywriter. Always return only valid JSON. No markdown, no backticks, no explanation."
+        }
+      },
+      "id": "a903f509-abb8-4c87-aff5-0ddbcb963bab",
+      "name": "AI Write Stage 3 Email",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1680,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "47c4f00e-dd5e-4f26-a5b0-4a2c87039be6",
+      "name": "OpenAI Model (Stage 3)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1680,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"subject\": \"Closing your file\", \"body\": \"Hi John, ...\" }"
+      },
+      "id": "ecc58167-fb27-4371-8646-c873f59c28e6",
+      "name": "Output Parser (Stage 3)",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1536,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"from\": \"Your Name <hello@yourdomain.com>\", \"to\": [$json.properties.Email.email], \"subject\": $('AI Write Stage 3 Email').item.json.subject, \"html\": \"<p>\" + $('AI Write Stage 3 Email').item.json.body.replace(/\\n/g, '</p><p>') + \"</p>\" } }}",
+        "options": {}
+      },
+      "id": "98306b24-4c31-433c-87ab-c4a4ab7939e6",
+      "name": "Send Stage 3 Final Email (Resend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1072,
+        1616
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "stage-3-email-failed",
+              "leftValue": "={{ !!$json.error }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "31aaa0af-3ca2-4b80-9746-f92d50ec8239",
+      "name": "Stage 3 Email Send Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Stage 3 Ready Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "Completed"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 3
+            },
+            {
+              "key": "Stage 3 Sent|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f8eb6c3c-782d-436b-ac76-22db00adff38",
+      "name": "Update Notion Stage 3",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        1808
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Send Failed: Stage 3 email for *\" + $('Lead Recovery Intelligence - Stage 3').item.json.leadName + \"* (\" + $('Lead Recovery Intelligence - Stage 3').item.json.email + \")\\nStatus: Send Failed\\nError: \" + (($json.error && ($json.error.message || $json.error.description || $json.error)) || 'Unknown error') + \"\\nAction: Lead marked for review.\" }}",
+        "otherOptions": {}
+      },
+      "id": "ebc93f08-1a73-4ba0-847e-70223c46c9f0",
+      "name": "Slack Stage 3 Send Failed",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -336,
+        1520
+      ],
+      "webhookId": "8c93b4b0-7c90-4e46-bf3d-2bd44ac2b9a1"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Fetch Stage 3 Ready Leads').item.json.id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "In Progress"
+            },
+            {
+              "key": "Recovery Stage|number",
+              "numberValue": 2
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "479548dd-24c4-4be9-bd06-e1fcf9330ddb",
+      "name": "Lock Stage 3 Lead",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1328,
+        1616
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-reply",
+        "options": {}
+      },
+      "id": "2ccfab76-c6ac-469a-b884-cc10e352eaaf",
+      "name": "Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2640,
+        2272
+      ],
+      "webhookId": "d7ccbe39-4293-4543-839f-4589af81ac1c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "lead_id",
+              "name": "lead_id",
+              "value": "={{ $json.body.lead_id }}",
+              "type": "string"
+            },
+            {
+              "id": "email",
+              "name": "email",
+              "value": "={{ $json.body.email }}",
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "name": "message",
+              "value": "={{ $json.body.message }}",
+              "type": "string"
+            },
+            {
+              "id": "channel",
+              "name": "channel",
+              "value": "={{ $json.body.channel }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3de8fa2a-6667-48cf-807f-17a72c9e8e4f",
+      "name": "Extract Reply Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2352,
+        2272
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ \"Analyze this lead reply and determine their intent:\\n\\nMessage: \" + $json.message + \"\\n\\nClassify the intent as one of: interested, not_interested, wants_booking, wants_quote, wants_human, opt_out, or wrong_person.\\nAlso determine sentiment: positive, neutral, or negative.\\nFlag whether the message needs a human response when it is ambiguous or context-dependent.\\nProvide a brief 1-sentence summary.\" }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a lead qualification assistant. Analyze customer replies to determine intent and interest level. Always return structured JSON only. No markdown, no backticks."
+        }
+      },
+      "id": "c365c75e-c56d-4117-8992-5d3a03859546",
+      "name": "Analyze Reply Intent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -2000,
+        2256
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "ee4e9f91-84c6-4d4c-90da-c88eb55354f3",
+      "name": "OpenAI Model (Reply)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -2000,
+        2432
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"intent\": \"interested\", \"wants_booking\": true, \"wants_quote\": false, \"wants_human\": false, \"needs_human_response\": false, \"opt_out\": false, \"wrong_person\": false, \"sentiment\": \"positive\", \"summary\": \"Lead expressed interest in learning more\" }"
+      },
+      "id": "822cc0cb-72ef-4754-afa8-7c7b65fb3ed8",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1856,
+        2416
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "opt_out"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "opt_out"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "not_interested"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "not_interested"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "wrong_person"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "wrong_person"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.wants_booking }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "booking"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.wants_quote }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "quote"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.wants_human }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "human"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "interested"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "interested"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "edf6ed75-ee04-4232-8409-fdc0b6a2c508",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1552,
+        2160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Extract Reply Data').item.json.lead_id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Opted Out|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Replied|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "Opted Out"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b0994811-e9e8-4631-b09e-d8c819445cba",
+      "name": "Mark as Opted Out",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        1968
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Extract Reply Data').item.json.lead_id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Replied|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "Revived"
+            },
+            {
+              "key": "Wants Booking|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Replied At|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ee33cf57-0091-484b-a79f-e2abc0283dfe",
+      "name": "Mark as Booking Requested",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        2176
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Extract Reply Data').item.json.lead_id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Replied|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "Revived"
+            },
+            {
+              "key": "Needs Human|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Replied At|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4533a89a-ed06-4b79-8e72-6a21b80aecb8",
+      "name": "Mark for Human Handoff",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1120,
+        2384
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "update",
+        "pageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Extract Reply Data').item.json.lead_id }}"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Replied|checkbox",
+              "checkboxValue": true
+            },
+            {
+              "key": "Recovery Status|select",
+              "selectValue": "Revived"
+            },
+            {
+              "key": "Replied At|date"
+            },
+            {
+              "key": "Last Contacted|date"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1aec7fd-9f0a-456e-997e-a8409438689b",
+      "name": "Mark as Interested",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        2640
+      ],
+      "credentials": {
+        "notionApi": {
+          "id": "MgB73KlYlH3iZwon",
+          "name": "Notion account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "<YOUR_SLACK_CHANNEL_ID>"
+        },
+        "text": "={{ \"Dead lead replied: *\" + $('Extract Reply Data').item.json.email + \"*\\nIntent: \" + $('Analyze Reply Intent').item.json.intent + \"\\nSentiment: \" + $('Analyze Reply Intent').item.json.sentiment + \"\\nNeeds human response: \" + ($('Analyze Reply Intent').item.json.needs_human_response ? 'yes' : 'no') + \"\\nSummary: \" + ($('Analyze Reply Intent').item.json.summary || 'n/a') + \"\\nMessage: \\\"\" + $('Extract Reply Data').item.json.message + \"\\\"\\n\\nAction: \" + ($('Analyze Reply Intent').item.json.wants_booking ? 'Book them in' : $('Analyze Reply Intent').item.json.wants_quote ? 'Prepare a quote' : $('Analyze Reply Intent').item.json.wants_human ? 'Human follow-up needed' : 'Continue nurturing') }}",
+        "otherOptions": {}
+      },
+      "id": "4472fa7f-2a4e-420e-aba5-009b94f45733",
+      "name": "Notify Team on Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -368,
+        2272
+      ],
+      "webhookId": "3eead4db-e57d-455d-bf99-320c36aae2b2"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nconst props = input.properties || {};\n\nfunction textOf(property) {\n  if (!property) return '';\n  if (Array.isArray(property.title)) return property.title.map((item) => item.plain_text || '').join('').trim();\n  if (Array.isArray(property.rich_text)) return property.rich_text.map((item) => item.plain_text || '').join('').trim();\n  if (property.email) return property.email;\n  if (property.phone_number) return property.phone_number;\n  if (property.url) return property.url;\n  if (property.select?.name) return property.select.name;\n  if (property.status?.name) return property.status.name;\n  if (Array.isArray(property.multi_select)) return property.multi_select.map((item) => item.name).filter(Boolean).join(', ');\n  if (typeof property.number === 'number') return String(property.number);\n  if (typeof property.checkbox === 'boolean') return property.checkbox ? 'true' : 'false';\n  return '';\n}\n\nfunction safeDate(value) {\n  if (!value) return null;\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nconst leadName = textOf(props.Name) || textOf(props['Lead Name']) || 'there';\nconst firstName = (leadName.split(/\\s+/)[0] || 'there').trim() || 'there';\nconst email = textOf(props.Email);\nconst phone = textOf(props.Phone);\nconst company = textOf(props.Company) || textOf(props['Company Name']) || textOf(props.Organization);\nconst industry = textOf(props.Industry);\nconst source = textOf(props.Source) || textOf(props['Lead Source']);\nconst role = textOf(props.Role) || textOf(props.Title) || textOf(props.Position);\nconst smsOptIn = Boolean(props['SMS Opt In']?.checkbox);\nconst optedOut = Boolean(props['Opted Out']?.checkbox);\nconst replied = Boolean(props.Replied?.checkbox);\nconst lastContactedRaw = props['Last Contacted']?.date?.start || props['Last Contacted']?.date?.end || input.last_contacted || input.lastContacted || null;\nconst lastContactedDate = safeDate(lastContactedRaw);\nconst daysSinceLastContact = lastContactedDate ? Math.max(0, Math.floor((Date.now() - lastContactedDate.getTime()) / 86400000)) : null;\n\nconst stageNumber = Number(props['Recovery Stage']?.number || 0);\nconst recoveryPhase = 'stage_1';\n\nlet leadScore = 40;\nif (email) leadScore += 15;\nif (phone) leadScore += 10;\nif (smsOptIn && phone) leadScore += 20;\nif (firstName !== 'there') leadScore += 5;\nif (company) leadScore += 5;\nif (industry) leadScore += 3;\nif (source) leadScore += 3;\nif (role) leadScore += 2;\nif (daysSinceLastContact !== null) leadScore += Math.max(0, Math.min(12, 12 - Math.floor(daysSinceLastContact / 12)));\nif (replied) leadScore += 5;\nif (optedOut) leadScore = 0;\nleadScore = Math.max(0, Math.min(100, leadScore));\n\nconst leadTier = leadScore >= 80 ? 'high' : leadScore >= 60 ? 'medium' : 'low';\nconst sendMode = smsOptIn && phone ? 'email_plus_sms' : 'email_only';\nconst recommendedTone = recoveryPhase === 'stage_1' ? 'curious and direct' : recoveryPhase === 'stage_2' ? 'value-led and specific' : 'calm, respectful, and final';\nconst openingLine = recoveryPhase === 'stage_1'\n  ? `Hi ${firstName}, I noticed this went quiet and wanted to share one quick thought.`\n  : recoveryPhase === 'stage_2'\n    ? `Hi ${firstName}, I have one more idea that may make this worth revisiting.`\n    : `Hi ${firstName}, I am going to close the loop on my side after this note.`;\nconst replyQuestion = recoveryPhase === 'stage_1'\n  ? 'Is this still relevant right now?'\n  : recoveryPhase === 'stage_2'\n    ? 'Would it help if I sent a clearer example or next step?'\n    : 'Should I close your file, or is there a better time to reconnect?';\n\nconst contextPieces = [company, role, industry, source].filter(Boolean);\nconst contextSummary = contextPieces.length ? contextPieces.join(' | ') : 'No extra CRM context available.';\n\nconst leadBrief = [\n  `Lead name: ${leadName}`,\n  `First name: ${firstName}`,\n  `Email: ${email || 'missing'}`,\n  `Phone: ${phone || 'missing'}`,\n  `Score: ${leadScore}/100`,\n  `Tier: ${leadTier}`,\n  `Recovery phase: ${recoveryPhase}`,\n  `Days since last contact: ${daysSinceLastContact === null ? 'unknown' : String(daysSinceLastContact)}`,\n  `Send mode: ${sendMode}`,\n  `Tone: ${recommendedTone}`,\n  `Opening line: ${openingLine}`,\n  `Reply question: ${replyQuestion}`,\n  `CRM context: ${contextSummary}`\n].join('\\n');\n\nreturn [{ json: {\n  ...input,\n  leadName,\n  firstName,\n  email,\n  phone,\n  company,\n  industry,\n  source,\n  role,\n  lastContacted: lastContactedRaw,\n  daysSinceLastContact,\n  smsOptIn,\n  optedOut,\n  replied,\n  recoveryStage: stageNumber,\n  recoveryPhase,\n  leadScore,\n  leadTier,\n  sendMode,\n  recommendedTone,\n  openingLine,\n  replyQuestion,\n  leadBrief,\n  leadContext: contextSummary,\n} }];\n"
+      },
+      "id": "cf7314c9-7731-4406-92ac-6cbf03145e7f",
+      "name": "Lead Recovery Intelligence - Stage 1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1824,
+        576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "sms-ready-check",
+              "leftValue": "={{ !!$('Fetch Inactive Leads').item.json.properties.Phone?.phone_number && !!$('Fetch Inactive Leads').item.json.properties['SMS Opt In']?.checkbox }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aeae9882-eb33-4a77-b4fd-1d36d5d53235",
+      "name": "Stage 1 SMS Ready?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nconst props = input.properties || {};\n\nfunction textOf(property) {\n  if (!property) return '';\n  if (Array.isArray(property.title)) return property.title.map((item) => item.plain_text || '').join('').trim();\n  if (Array.isArray(property.rich_text)) return property.rich_text.map((item) => item.plain_text || '').join('').trim();\n  if (property.email) return property.email;\n  if (property.phone_number) return property.phone_number;\n  if (property.url) return property.url;\n  if (property.select?.name) return property.select.name;\n  if (property.status?.name) return property.status.name;\n  if (Array.isArray(property.multi_select)) return property.multi_select.map((item) => item.name).filter(Boolean).join(', ');\n  if (typeof property.number === 'number') return String(property.number);\n  if (typeof property.checkbox === 'boolean') return property.checkbox ? 'true' : 'false';\n  return '';\n}\n\nfunction safeDate(value) {\n  if (!value) return null;\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nconst leadName = textOf(props.Name) || textOf(props['Lead Name']) || 'there';\nconst firstName = (leadName.split(/\\s+/)[0] || 'there').trim() || 'there';\nconst email = textOf(props.Email);\nconst phone = textOf(props.Phone);\nconst company = textOf(props.Company) || textOf(props['Company Name']) || textOf(props.Organization);\nconst industry = textOf(props.Industry);\nconst source = textOf(props.Source) || textOf(props['Lead Source']);\nconst role = textOf(props.Role) || textOf(props.Title) || textOf(props.Position);\nconst smsOptIn = Boolean(props['SMS Opt In']?.checkbox);\nconst optedOut = Boolean(props['Opted Out']?.checkbox);\nconst replied = Boolean(props.Replied?.checkbox);\nconst lastContactedRaw = props['Last Contacted']?.date?.start || props['Last Contacted']?.date?.end || input.last_contacted || input.lastContacted || null;\nconst lastContactedDate = safeDate(lastContactedRaw);\nconst daysSinceLastContact = lastContactedDate ? Math.max(0, Math.floor((Date.now() - lastContactedDate.getTime()) / 86400000)) : null;\n\nconst stageNumber = Number(props['Recovery Stage']?.number || 0);\nconst recoveryPhase = 'stage_2';\n\nlet leadScore = 40;\nif (email) leadScore += 15;\nif (phone) leadScore += 10;\nif (smsOptIn && phone) leadScore += 20;\nif (firstName !== 'there') leadScore += 5;\nif (company) leadScore += 5;\nif (industry) leadScore += 3;\nif (source) leadScore += 3;\nif (role) leadScore += 2;\nif (daysSinceLastContact !== null) leadScore += Math.max(0, Math.min(12, 12 - Math.floor(daysSinceLastContact / 12)));\nif (replied) leadScore += 5;\nif (optedOut) leadScore = 0;\nleadScore = Math.max(0, Math.min(100, leadScore));\n\nconst leadTier = leadScore >= 80 ? 'high' : leadScore >= 60 ? 'medium' : 'low';\nconst sendMode = smsOptIn && phone ? 'email_plus_sms' : 'email_only';\nconst recommendedTone = recoveryPhase === 'stage_1' ? 'curious and direct' : recoveryPhase === 'stage_2' ? 'value-led and specific' : 'calm, respectful, and final';\nconst openingLine = recoveryPhase === 'stage_1'\n  ? `Hi ${firstName}, I noticed this went quiet and wanted to share one quick thought.`\n  : recoveryPhase === 'stage_2'\n    ? `Hi ${firstName}, I have one more idea that may make this worth revisiting.`\n    : `Hi ${firstName}, I am going to close the loop on my side after this note.`;\nconst replyQuestion = recoveryPhase === 'stage_1'\n  ? 'Is this still relevant right now?'\n  : recoveryPhase === 'stage_2'\n    ? 'Would it help if I sent a clearer example or next step?'\n    : 'Should I close your file, or is there a better time to reconnect?';\n\nconst contextPieces = [company, role, industry, source].filter(Boolean);\nconst contextSummary = contextPieces.length ? contextPieces.join(' | ') : 'No extra CRM context available.';\n\nconst leadBrief = [\n  `Lead name: ${leadName}`,\n  `First name: ${firstName}`,\n  `Email: ${email || 'missing'}`,\n  `Phone: ${phone || 'missing'}`,\n  `Score: ${leadScore}/100`,\n  `Tier: ${leadTier}`,\n  `Recovery phase: ${recoveryPhase}`,\n  `Days since last contact: ${daysSinceLastContact === null ? 'unknown' : String(daysSinceLastContact)}`,\n  `Send mode: ${sendMode}`,\n  `Tone: ${recommendedTone}`,\n  `Opening line: ${openingLine}`,\n  `Reply question: ${replyQuestion}`,\n  `CRM context: ${contextSummary}`\n].join('\\n');\n\nreturn [{ json: {\n  ...input,\n  leadName,\n  firstName,\n  email,\n  phone,\n  company,\n  industry,\n  source,\n  role,\n  lastContacted: lastContactedRaw,\n  daysSinceLastContact,\n  smsOptIn,\n  optedOut,\n  replied,\n  recoveryStage: stageNumber,\n  recoveryPhase,\n  leadScore,\n  leadTier,\n  sendMode,\n  recommendedTone,\n  openingLine,\n  replyQuestion,\n  leadBrief,\n  leadContext: contextSummary,\n} }];\n"
+      },
+      "id": "66813136-2282-4c81-900b-2c0e54cda771",
+      "name": "Lead Recovery Intelligence - Stage 2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2080,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst input = $input.first().json;\nconst props = input.properties || {};\n\nfunction textOf(property) {\n  if (!property) return '';\n  if (Array.isArray(property.title)) return property.title.map((item) => item.plain_text || '').join('').trim();\n  if (Array.isArray(property.rich_text)) return property.rich_text.map((item) => item.plain_text || '').join('').trim();\n  if (property.email) return property.email;\n  if (property.phone_number) return property.phone_number;\n  if (property.url) return property.url;\n  if (property.select?.name) return property.select.name;\n  if (property.status?.name) return property.status.name;\n  if (Array.isArray(property.multi_select)) return property.multi_select.map((item) => item.name).filter(Boolean).join(', ');\n  if (typeof property.number === 'number') return String(property.number);\n  if (typeof property.checkbox === 'boolean') return property.checkbox ? 'true' : 'false';\n  return '';\n}\n\nfunction safeDate(value) {\n  if (!value) return null;\n  const date = new Date(value);\n  return Number.isNaN(date.getTime()) ? null : date;\n}\n\nconst leadName = textOf(props.Name) || textOf(props['Lead Name']) || 'there';\nconst firstName = (leadName.split(/\\s+/)[0] || 'there').trim() || 'there';\nconst email = textOf(props.Email);\nconst phone = textOf(props.Phone);\nconst company = textOf(props.Company) || textOf(props['Company Name']) || textOf(props.Organization);\nconst industry = textOf(props.Industry);\nconst source = textOf(props.Source) || textOf(props['Lead Source']);\nconst role = textOf(props.Role) || textOf(props.Title) || textOf(props.Position);\nconst smsOptIn = Boolean(props['SMS Opt In']?.checkbox);\nconst optedOut = Boolean(props['Opted Out']?.checkbox);\nconst replied = Boolean(props.Replied?.checkbox);\nconst lastContactedRaw = props['Last Contacted']?.date?.start || props['Last Contacted']?.date?.end || input.last_contacted || input.lastContacted || null;\nconst lastContactedDate = safeDate(lastContactedRaw);\nconst daysSinceLastContact = lastContactedDate ? Math.max(0, Math.floor((Date.now() - lastContactedDate.getTime()) / 86400000)) : null;\n\nconst stageNumber = Number(props['Recovery Stage']?.number || 0);\nconst recoveryPhase = 'stage_3';\n\nlet leadScore = 40;\nif (email) leadScore += 15;\nif (phone) leadScore += 10;\nif (smsOptIn && phone) leadScore += 20;\nif (firstName !== 'there') leadScore += 5;\nif (company) leadScore += 5;\nif (industry) leadScore += 3;\nif (source) leadScore += 3;\nif (role) leadScore += 2;\nif (daysSinceLastContact !== null) leadScore += Math.max(0, Math.min(12, 12 - Math.floor(daysSinceLastContact / 12)));\nif (replied) leadScore += 5;\nif (optedOut) leadScore = 0;\nleadScore = Math.max(0, Math.min(100, leadScore));\n\nconst leadTier = leadScore >= 80 ? 'high' : leadScore >= 60 ? 'medium' : 'low';\nconst sendMode = smsOptIn && phone ? 'email_plus_sms' : 'email_only';\nconst recommendedTone = recoveryPhase === 'stage_1' ? 'curious and direct' : recoveryPhase === 'stage_2' ? 'value-led and specific' : 'calm, respectful, and final';\nconst openingLine = recoveryPhase === 'stage_1'\n  ? `Hi ${firstName}, I noticed this went quiet and wanted to share one quick thought.`\n  : recoveryPhase === 'stage_2'\n    ? `Hi ${firstName}, I have one more idea that may make this worth revisiting.`\n    : `Hi ${firstName}, I am going to close the loop on my side after this note.`;\nconst replyQuestion = recoveryPhase === 'stage_1'\n  ? 'Is this still relevant right now?'\n  : recoveryPhase === 'stage_2'\n    ? 'Would it help if I sent a clearer example or next step?'\n    : 'Should I close your file, or is there a better time to reconnect?';\n\nconst contextPieces = [company, role, industry, source].filter(Boolean);\nconst contextSummary = contextPieces.length ? contextPieces.join(' | ') : 'No extra CRM context available.';\n\nconst leadBrief = [\n  `Lead name: ${leadName}`,\n  `First name: ${firstName}`,\n  `Email: ${email || 'missing'}`,\n  `Phone: ${phone || 'missing'}`,\n  `Score: ${leadScore}/100`,\n  `Tier: ${leadTier}`,\n  `Recovery phase: ${recoveryPhase}`,\n  `Days since last contact: ${daysSinceLastContact === null ? 'unknown' : String(daysSinceLastContact)}`,\n  `Send mode: ${sendMode}`,\n  `Tone: ${recommendedTone}`,\n  `Opening line: ${openingLine}`,\n  `Reply question: ${replyQuestion}`,\n  `CRM context: ${contextSummary}`\n].join('\\n');\n\nreturn [{ json: {\n  ...input,\n  leadName,\n  firstName,\n  email,\n  phone,\n  company,\n  industry,\n  source,\n  role,\n  lastContacted: lastContactedRaw,\n  daysSinceLastContact,\n  smsOptIn,\n  optedOut,\n  replied,\n  recoveryStage: stageNumber,\n  recoveryPhase,\n  leadScore,\n  leadTier,\n  sendMode,\n  recommendedTone,\n  openingLine,\n  replyQuestion,\n  leadBrief,\n  leadContext: contextSummary,\n} }];\n"
+      },
+      "id": "9cc52f55-0974-4bb0-a12c-970574b73178",
+      "name": "Lead Recovery Intelligence - Stage 3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2048,
+        1616
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 9 AM Scan": {
+      "main": [
+        [
+          {
+            "node": "Fetch Inactive Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Inactive Leads": {
+      "main": [
+        [
+          {
+            "node": "Filter Eligible Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Eligible Leads": {
+      "main": [
+        [
+          {
+            "node": "Lead Recovery Intelligence - Stage 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write Stage 1 Email": {
+      "main": [
+        [
+          {
+            "node": "Lock Stage 1 Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lock Stage 1 Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Stage 1 Email (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Stage 1)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Write Stage 1 Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser (Stage 1)": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Write Stage 1 Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Stage 1 Email (Resend)": {
+      "main": [
+        [
+          {
+            "node": "Stage 1 Email Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Stage 1 SMS (Twilio)": {
+      "main": [
+        [
+          {
+            "node": "Stage 1 SMS Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1 Email Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Slack Stage 1 Send Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Notion Stage 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1 SMS Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Slack Stage 1 SMS Send Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Notion Stage 1": {
+      "main": [
+        [
+          {
+            "node": "Slack Notify Stage 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Stage 1 SMS Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Follow-up Check": {
+      "main": [
+        [
+          {
+            "node": "Fetch Stage 2 Ready Leads",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Stage 3 Ready Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stage 2 Ready Leads": {
+      "main": [
+        [
+          {
+            "node": "Lead Recovery Intelligence - Stage 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write Stage 2 Email": {
+      "main": [
+        [
+          {
+            "node": "Lock Stage 2 Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lock Stage 2 Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Stage 2 Email (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Stage 2)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Write Stage 2 Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser (Stage 2)": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Write Stage 2 Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Stage 2 Email (Resend)": {
+      "main": [
+        [
+          {
+            "node": "Stage 2 Email Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 2 Email Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Slack Stage 2 Send Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Notion Stage 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Stage 3 Ready Leads": {
+      "main": [
+        [
+          {
+            "node": "Lead Recovery Intelligence - Stage 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Write Stage 3 Email": {
+      "main": [
+        [
+          {
+            "node": "Lock Stage 3 Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lock Stage 3 Lead": {
+      "main": [
+        [
+          {
+            "node": "Send Stage 3 Final Email (Resend)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Stage 3)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Write Stage 3 Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Parser (Stage 3)": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Write Stage 3 Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Stage 3 Final Email (Resend)": {
+      "main": [
+        [
+          {
+            "node": "Stage 3 Email Send Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 3 Email Send Failed?": {
+      "main": [
+        [
+          {
+            "node": "Slack Stage 3 Send Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Notion Stage 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Reply Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Reply Data": {
+      "main": [
+        [
+          {
+            "node": "Analyze Reply Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Reply Intent": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Reply)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Reply Intent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Analyze Reply Intent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Mark as Opted Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Opted Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Opted Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Booking Requested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark for Human Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark for Human Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Interested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark for Human Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Booking Requested": {
+      "main": [
+        [
+          {
+            "node": "Notify Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark for Human Handoff": {
+      "main": [
+        [
+          {
+            "node": "Notify Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Interested": {
+      "main": [
+        [
+          {
+            "node": "Notify Team on Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Recovery Intelligence - Stage 1": {
+      "main": [
+        [
+          {
+            "node": "AI Write Stage 1 Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stage 1 SMS Ready?": {
+      "main": [
+        [
+          {
+            "node": "Send Stage 1 SMS (Twilio)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Recovery Intelligence - Stage 2": {
+      "main": [
+        [
+          {
+            "node": "AI Write Stage 2 Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Recovery Intelligence - Stage 3": {
+      "main": [
+        [
+          {
+            "node": "AI Write Stage 3 Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fa17fae2-51bf-4ecf-b48a-448403d94d56",
+  "meta": {
+    "instanceId": "c556b463c21b3cd46f5926696ed84e0ec276d75f80af743342577ec01c727f93"
+  },
+  "id": "q4Wrz1YCBoBQaznn",
+  "tags": []
+}
