@@ -1013,7 +1013,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ \"Analyze this lead reply and determine their intent:\\n\\nMessage: \" + $json.message + \"\\n\\nClassify the intent as one of: interested, not_interested, wants_booking, wants_quote, wants_human, opt_out, or wrong_person.\\nAlso determine sentiment: positive, neutral, or negative.\\nFlag whether the message needs a human response when it is ambiguous or context-dependent.\\nProvide a brief 1-sentence summary.\" }}",
+        "text": "={{ \"Analyze this lead reply and determine their intent.\\n\\nMessage: \" + $json.message + \"\\n\\nReturn only JSON with these fields:\\n- intent: one of interested, not_interested, wants_booking, wants_quote, wants_human, opt_out, or wrong_person\\n- wants_booking: true when they are asking to book or schedule\\n- wants_quote: true when they want pricing or a quote\\n- wants_human: true when they want a person to follow up\\n- needs_human_response: true when the reply is ambiguous, contextual, or should be handled by a person\\n- opt_out: true when they want no more contact\\n- wrong_person: true when the contact is not the right person\\n- sentiment: positive, neutral, or negative\\n- summary: a brief 1-sentence summary\\n\\nBe strict and conservative: if the message is vague, set needs_human_response to true.\" }}",
         "hasOutputParser": true,
         "options": {
           "systemMessage": "You are a lead qualification assistant. Analyze customer replies to determine intent and interest level. Always return structured JSON only. No markdown, no backticks."
@@ -1148,7 +1148,7 @@
               "conditions": {
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.wants_human }}",
+                    "leftValue": "={{ $json.wants_human || $json.needs_human_response }}",
                     "operator": {
                       "type": "boolean",
                       "operation": "true"
@@ -1384,7 +1384,7 @@
           "mode": "list",
           "value": "<YOUR_SLACK_CHANNEL_ID>"
         },
-        "text": "={{ \"Dead lead replied: *\" + $('Extract Reply Data').item.json.email + \"*\\nIntent: \" + $('Analyze Reply Intent').item.json.intent + \"\\nSentiment: \" + $('Analyze Reply Intent').item.json.sentiment + \"\\nNeeds human response: \" + ($('Analyze Reply Intent').item.json.needs_human_response ? 'yes' : 'no') + \"\\nSummary: \" + ($('Analyze Reply Intent').item.json.summary || 'n/a') + \"\\nMessage: \\\"\" + $('Extract Reply Data').item.json.message + \"\\\"\\n\\nAction: \" + ($('Analyze Reply Intent').item.json.wants_booking ? 'Book them in' : $('Analyze Reply Intent').item.json.wants_quote ? 'Prepare a quote' : $('Analyze Reply Intent').item.json.wants_human ? 'Human follow-up needed' : 'Continue nurturing') }}",
+        "text": "={{ \"Dead lead replied: *\" + $('Extract Reply Data').item.json.email + \"*\\nIntent: \" + $('Analyze Reply Intent').item.json.intent + \"\\nSentiment: \" + $('Analyze Reply Intent').item.json.sentiment + \"\\nNeeds human response: \" + ($('Analyze Reply Intent').item.json.needs_human_response ? 'yes' : 'no') + \"\\nSummary: \" + ($('Analyze Reply Intent').item.json.summary || 'n/a') + \"\\nMessage: \\\"\" + $('Extract Reply Data').item.json.message + \"\\\"\\n\\nAction: \" + ($('Analyze Reply Intent').item.json.wants_booking ? 'Book them in' : $('Analyze Reply Intent').item.json.wants_quote ? 'Prepare a quote' : ($('Analyze Reply Intent').item.json.wants_human || $('Analyze Reply Intent').item.json.needs_human_response || $('Analyze Reply Intent').item.json.wrong_person) ? 'Human follow-up needed' : $('Analyze Reply Intent').item.json.opt_out ? 'Close out and suppress future outreach' : 'Continue nurturing') }}",
         "otherOptions": {}
       },
       "id": "4472fa7f-2a4e-420e-aba5-009b94f45733",
@@ -1874,7 +1874,7 @@
         ],
         [
           {
-            "node": "Mark as Opted Out",
+            "node": "Mark for Human Handoff",
             "type": "main",
             "index": 0
           }
