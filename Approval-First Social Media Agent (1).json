@@ -1317,6 +1317,342 @@
         1680,
         688
       ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1"
+            }
+          ]
+        }
+      },
+      "id": "bdaddd0a-5e90-4e14-86cc-65c84708edd4",
+      "name": "Weekly Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        3008
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "brand_name",
+              "name": "brandName",
+              "value": "Your Brand",
+              "type": "string"
+            },
+            {
+              "id": "audience",
+              "name": "audience",
+              "value": "Your ideal audience",
+              "type": "string"
+            },
+            {
+              "id": "voice",
+              "name": "voice",
+              "value": "Clear, trustworthy, concise, and human",
+              "type": "string"
+            },
+            {
+              "id": "platform_targets",
+              "name": "platformTargets",
+              "value": "x,linkedin,facebook,instagram,tiktok",
+              "type": "string"
+            },
+            {
+              "id": "review_recipient",
+              "name": "reviewRecipient",
+              "value": "approver@example.com",
+              "type": "string"
+            },
+            {
+              "id": "approval_slack_channel_id",
+              "name": "approvalSlackChannelId",
+              "value": "C0123456789",
+              "type": "string"
+            },
+            {
+              "id": "sender_email",
+              "name": "senderEmail",
+              "value": "n8n@example.com",
+              "type": "string"
+            },
+            {
+              "id": "tiktok_access_token",
+              "name": "tiktokAccessToken",
+              "value": "YOUR_TIKTOK_ACCESS_TOKEN",
+              "type": "string"
+            },
+            {
+              "id": "tiktok_video_url",
+              "name": "tiktokVideoUrl",
+              "value": "https://example.com/video.mp4",
+              "type": "string"
+            },
+            {
+              "id": "tiktok_privacy_level",
+              "name": "tiktokPrivacyLevel",
+              "value": "SELF_ONLY",
+              "type": "string"
+            },
+            {
+              "id": "tiktok_disable_duet",
+              "name": "tiktokDisableDuet",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "tiktok_disable_comment",
+              "name": "tiktokDisableComment",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "tiktok_disable_stitch",
+              "name": "tiktokDisableStitch",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "linkedin_person_id",
+              "name": "linkedinPersonId",
+              "value": "YOUR_LINKEDIN_PERSON_ID",
+              "type": "string"
+            },
+            {
+              "id": "facebook_page_id",
+              "name": "facebookPageId",
+              "value": "YOUR_FACEBOOK_PAGE_ID",
+              "type": "string"
+            },
+            {
+              "id": "instagram_business_id",
+              "name": "instagramBusinessId",
+              "value": "YOUR_INSTAGRAM_BUSINESS_ID",
+              "type": "string"
+            },
+            {
+              "id": "instagram_image_url",
+              "name": "instagramImageUrl",
+              "value": "https://example.com/image.jpg",
+              "type": "string"
+            },
+            {
+              "id": "topic_bank",
+              "name": "topicBank",
+              "value": "education | Share a practical tip that helps the audience save time | Teach something useful\nbehind_the_scenes | Show what happens before a post goes live | Humanize the process\ntrust | Explain why consistency matters more than chasing virality | Build credibility\nfaq | Answer a question people ask often | Remove friction and confusion\nproof | Share a small, believable win or result | Keep it grounded\nproduct | Highlight one feature or service benefit | Make the value concrete\ncommunity | Offer something helpful with no hard sell | Build goodwill\npromo | Make a soft offer that feels natural | Encourage action without pressure",
+              "type": "string"
+            },
+            {
+              "id": "compliance_rules",
+              "name": "complianceRules",
+              "value": "Avoid false claims, guarantees, deceptive urgency, hate, harassment, confidential data, or policy-violating content. Keep it factual, platform-native, and helpful.",
+              "type": "string"
+            },
+            {
+              "id": "planning_mode",
+              "name": "planningMode",
+              "value": "weekly",
+              "type": "string"
+            },
+            {
+              "id": "alert_slack_channel_id",
+              "name": "alertSlackChannelId",
+              "value": "C0123456789",
+              "type": "string"
+            },
+            {
+              "id": "evergreen_library",
+              "name": "evergreenLibrary",
+              "value": "{\"pillars\":[\"education\",\"trust\",\"proof\",\"community\",\"promo\"],\"formats\":[\"short tip\",\"before/after\",\"myth vs fact\",\"FAQ\",\"behind the scenes\"]}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b4a9eb70-cd64-4e5a-8449-e2fb6756f3da",
+      "name": "Weekly Brand Profile",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        160,
+        3008
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst today = new Date();\nconst start = new Date(today);\nstart.setHours(0, 0, 0, 0);\nconst dayOfWeek = start.getDay();\nconst diffToMonday = (dayOfWeek + 6) % 7;\nstart.setDate(start.getDate() - diffToMonday);\nconst end = new Date(start);\nend.setDate(end.getDate() + 6);\n\nconst weekStart = start.toISOString().slice(0, 10);\nconst weekEnd = end.toISOString().slice(0, 10);\nconst generatedAt = new Date().toISOString();\n\nconst prompt = `You are creating a weekly social media posting plan for ${input.brandName}.\nAudience: ${input.audience}\nVoice: ${input.voice}\nPlatforms: ${input.platformTargets}\nWeek start: ${weekStart}\nWeek end: ${weekEnd}\n\nEvergreen content library:\n${JSON.stringify(input.evergreenLibrary || {}, null, 2)}\n\nCompliance rules:\n${input.complianceRules}\n\nCreate a 7-day posting plan with a realistic mix across the requested platforms. Include a top-level video_ideas array and a video_idea field on each daily_plan item. Do not repeat the same platform too often; prioritize variety and intent.\nReturn ONLY valid JSON with this exact structure:\n{\n  \"week_start\": string,\n  \"week_end\": string,\n  \"theme\": string,\n  \"objectives\": [string],\n  \"cadence\": string,\n  \"daily_plan\": [\n    {\n      \"day\": string,\n      \"platform\": string,\n      \"post_type\": string,\n      \"topic\": string,\n      \"hook\": string,\n      \"angle\": string,\n      \"cta\": string,\n      \"asset_needed\": string,\n      \"notes\": string,\n      \"video_idea\": string\n    }\n  ],\n  \"video_ideas\": [string],\n  \"risk_checks\": [string],\n  \"approval_notes\": [string]\n}\n\nRules:\n- Include exactly 7 daily_plan items.\n- Spread content across X, LinkedIn, Facebook, Instagram, and TikTok when appropriate.\n- Make the plan practical, realistic, and brand-safe.\n- Avoid repetitive angles.\n- Keep the plan ready for human review.`;\n\nreturn [{ json: { ...input, weekStart, weekEnd, generatedAt, weeklyPrompt: prompt } }];"
+      },
+      "id": "bf8abb0b-01da-4b97-a993-14c6438dc366",
+      "name": "Weekly Plan Builder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst weeklyVideoIdeas = [\n  `Educational reel: ${input.selectedTopic || 'core topic'} in under 30 seconds`,\n  `Behind-the-scenes clip showing how the post is planned`,\n  `FAQ style video answering the most common objection`\n];\n\nconst prompt = `${input.weeklyPrompt}\n\nVideo idea guidance:\n- Include 2 to 3 video ideas for each day in a video_ideas array.\n- Add a recommended primary video concept to every daily_plan item as video_idea.\n- Keep production realistic for one creator or small team.\n- Include shot list, hook, and edit notes inside each daily_plan item when possible.\n\nStarter weekly video ideas:\n${weeklyVideoIdeas.map((idea, index) => `${index + 1}. ${idea}`).join('\n')}`;\n\nreturn [{ json: { ...input, weeklyVideoIdeas, weeklyPrompt: prompt } }];"
+      },
+      "id": "05ecd841-f1e7-4d47-9833-0b5ad1f6a2c8",
+      "name": "Weekly Creative Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.weeklyPrompt }}",
+        "options": {
+          "systemMessage": "You are a senior social media strategist. Produce a concrete weekly posting plan that is useful, realistic, and brand-safe. Return only valid JSON and do not use markdown fences."
+        }
+      },
+      "id": "ae67b037-1256-4950-b363-7f20773f062a",
+      "name": "Weekly Plan Generator",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1072,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nfunction extractText(value) {\n  if (typeof value === 'string') return value;\n  if (!value || typeof value !== 'object') return value;\n  if (typeof value.output === 'string') return value.output;\n  if (typeof value.response === 'string') return value.response;\n  if (typeof value.text === 'string') return value.text;\n  if (typeof value.message === 'string') return value.message;\n  if (typeof value.content === 'string') return value.content;\n  if (Array.isArray(value.generations) && value.generations[0]?.[0]?.text) return value.generations[0][0].text;\n  return value;\n}\n\nconst candidate = extractText(input);\nlet parsed = candidate;\nlet parseError = null;\n\nif (typeof candidate === 'string') {\n  const cleaned = candidate.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```$/i, '');\n  try {\n    parsed = JSON.parse(cleaned);\n  } catch (error) {\n    parseError = error.message;\n    parsed = null;\n  }\n}\n\nconst dailyPlan = Array.isArray(parsed?.daily_plan) ? parsed.daily_plan : [];\nconst validationIssues = [];\n\nif (!parsed) validationIssues.push('json_parse_failed');\nif (dailyPlan.length !== 7) validationIssues.push('daily_plan_must_have_7_items');\nfor (const item of dailyPlan) {\n  if (!item.day || !item.platform || !item.post_type || !item.topic || !item.hook || !item.cta) {\n    validationIssues.push('daily_plan_item_missing_required_fields');\n    break;\n  }\n}\n\nreturn [{ json: { ...input, weeklyParsed: parsed, weeklyParseError: parseError, weeklyValidationIssues: validationIssues, weeklyVideoIdeas: Array.isArray(parsed?.video_ideas) ? parsed.video_ideas : Array.isArray(input.weeklyVideoIdeas) ? input.weeklyVideoIdeas : [], weeklyEmailSubject: `Weekly posting plan: ${input.brandName} (${input.weekStart} to ${input.weekEnd})`, weeklyEmailText: parsed ? JSON.stringify(parsed, null, 2) : (typeof candidate === 'string' ? candidate : JSON.stringify(candidate, null, 2)), weeklySlackText: parsed ? `Week ${input.weekStart} to ${input.weekEnd}\\n` + JSON.stringify(parsed, null, 2) : (typeof candidate === 'string' ? candidate : JSON.stringify(candidate, null, 2)) } }];"
+      },
+      "id": "51ff6575-a9c8-48a6-b514-0e9073838ae4",
+      "name": "Weekly Plan QA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst dailyPlatforms = Array.isArray(input.weeklyParsed?.daily_plan)\n  ? input.weeklyParsed.daily_plan.map((item) => item.platform).filter(Boolean)\n  : [];\n\nconst weeklyAuditSummary = {\n  workflowMode: 'weekly',\n  runId: input.generatedAt || new Date().toISOString(),\n  brandName: input.brandName,\n  weekStart: input.weekStart,\n  weekEnd: input.weekEnd,\n  theme: input.weeklyParsed?.theme || null,\n  objectiveCount: Array.isArray(input.weeklyParsed?.objectives) ? input.weeklyParsed.objectives.length : 0,\n  dailyPlanCount: Array.isArray(input.weeklyParsed?.daily_plan) ? input.weeklyParsed.daily_plan.length : 0,\n  platforms: dailyPlatforms,\n  validationIssues: Array.isArray(input.weeklyValidationIssues) ? input.weeklyValidationIssues : [],\n  parseError: input.weeklyParseError || null\n};\n\nreturn [{ json: { ...input, weeklyAuditSummary, weeklyAuditLine: JSON.stringify(weeklyAuditSummary, null, 2) } }];"
+      },
+      "id": "c56d90a6-419e-4924-ba46-4250a722736f",
+      "name": "Weekly Audit Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "social_media_run_log",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "runId",
+              "fieldValue": "={{ $json.generatedAt }}"
+            },
+            {
+              "fieldId": "workflowMode",
+              "fieldValue": "weekly"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "weekly_plan_ready"
+            },
+            {
+              "fieldId": "brandName",
+              "fieldValue": "={{ $json.brandName }}"
+            },
+            {
+              "fieldId": "weekStart",
+              "fieldValue": "={{ $json.weekStart }}"
+            },
+            {
+              "fieldId": "weekEnd",
+              "fieldValue": "={{ $json.weekEnd }}"
+            },
+            {
+              "fieldId": "theme",
+              "fieldValue": "={{ $json.weeklyParsed?.theme || \"\" }}"
+            },
+            {
+              "fieldId": "objectiveCount",
+              "fieldValue": "={{ Array.isArray($json.weeklyParsed?.objectives) ? $json.weeklyParsed.objectives.length : 0 }}"
+            },
+            {
+              "fieldId": "dailyPlanCount",
+              "fieldValue": "={{ Array.isArray($json.weeklyParsed?.daily_plan) ? $json.weeklyParsed.daily_plan.length : 0 }}"
+            },
+            {
+              "fieldId": "platforms",
+              "fieldValue": "={{ JSON.stringify($json.weeklyParsed?.daily_plan?.map((item) => item.platform).filter(Boolean) || []) }}"
+            },
+            {
+              "fieldId": "validationIssues",
+              "fieldValue": "={{ JSON.stringify($json.weeklyValidationIssues || []) }}"
+            },
+            {
+              "fieldId": "parseError",
+              "fieldValue": "={{ $json.weeklyParseError || \"\" }}"
+            },
+            {
+              "fieldId": "loggedAt",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "f3d69d0b-a6bb-417f-a29f-6060526afbee",
+      "name": "Weekly Run Log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        2720
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0ARCE5PT42",
+          "mode": "list",
+          "cachedResultName": "social-media-weekly-plans"
+        },
+        "text": "={{ \"*Weekly posting plan*\\n\" + $json.weeklySlackText }}",
+        "otherOptions": {}
+      },
+      "id": "c135b563-a1a5-420b-ad80-aa2d813e787d",
+      "name": "Weekly Plan Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1952,
+        2720
+      ],
+      "webhookId": "b74a282d-d56d-4f0e-a923-f0418749ea0d",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "hbRCgZYkERc0TLjm",
+          "name": "Slack account 2"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -1888,6 +2224,94 @@
         [
           {
             "node": "TikTok Publish Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Weekly Brand Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Brand Profile": {
+      "main": [
+        [
+          {
+            "node": "Weekly Plan Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Plan Builder": {
+      "main": [
+        [
+          {
+            "node": "Weekly Creative Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Creative Brief": {
+      "main": [
+        [
+          {
+            "node": "Weekly Plan Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Plan Generator": {
+      "main": [
+        [
+          {
+            "node": "Weekly Plan QA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Plan QA": {
+      "main": [
+        [
+          {
+            "node": "Weekly Audit Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Audit Summary": {
+      "main": [
+        [
+          {
+            "node": "Weekly Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Run Log": {
+      "main": [
+        [
+          {
+            "node": "Weekly Plan Slack",
             "type": "main",
             "index": 0
           }
