@@ -12,33 +12,13 @@
           ]
         }
       },
-      "id": "4f03b704-c43c-4734-9985-c47f23f14869",
+      "id": "179799cd-c1b2-4543-a463-85eefdb7f5fc",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        16,
-        2832
-      ]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "0 8 * * 1"
-            }
-          ]
-        }
-      },
-      "id": "bdaddd0a-5e90-4e14-86cc-65c84708edd4",
-      "name": "Weekly Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        16,
-        3008
+        -2112,
+        48
       ]
     },
     {
@@ -158,78 +138,37 @@
               "name": "alertSlackChannelId",
               "value": "C0AR91YNGVB",
               "type": "string"
+            },
+            {
+              "id": "evergreen_library",
+              "name": "evergreenLibrary",
+              "value": "{\"pillars\":[\"education\",\"trust\",\"proof\",\"community\",\"promo\"],\"formats\":[\"short tip\",\"before/after\",\"myth vs fact\",\"FAQ\",\"behind the scenes\"]}",
+              "type": "string"
             }
           ]
         },
         "options": {}
       },
-      "id": "0d71739b-9ae5-4bf7-8bdd-bb1809b2aa59",
+      "id": "22701ede-6237-4849-a834-04cf269495a2",
       "name": "Brand Profile",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.3,
       "position": [
-        160,
-        2832
+        -1840,
+        48
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst evergreenLibrary = {\n  pillars: [\n    { name: 'education', purpose: 'Teach something useful the audience can apply immediately.' },\n    { name: 'trust', purpose: 'Build credibility with clear, grounded explanations.' },\n    { name: 'proof', purpose: 'Share believable results, process, or evidence.' },\n    { name: 'community', purpose: 'Start helpful conversations without a hard sell.' },\n    { name: 'promo', purpose: 'Make a soft offer that feels natural and low pressure.' },\n    { name: 'behind_the_scenes', purpose: 'Humanize the work and show how the content gets made.' }\n  ],\n  contentFormats: [\n    'single-hook educational post',\n    'myth-versus-fact breakdown',\n    'checklist or steps post',\n    'short-form video concept',\n    'behind-the-scenes clip',\n    'FAQ answer',\n    'mini case study',\n    'soft promotion with useful framing'\n  ],\n  hookStyles: [\n    'Most people get this wrong...',\n    'If I were starting from zero today...',\n    'Here is the simplest way to think about it...',\n    'A small tweak that changes everything...',\n    'Before you post again, do this...'\n  ],\n  repurposingRules: [\n    'Do not repeat the same format on consecutive runs unless the topic strongly demands it.',\n    'Prefer one clear idea per post so the content is easy to understand and approve.',\n    'Use the strongest hook style available for the chosen platform.',\n    'Keep any compliance-sensitive claims conservative and factual.'\n  ],\n  guardrails: [\n    'No false guarantees or exaggerated outcomes.',\n    'No confidential or regulated information.',\n    'No hype-first copy that could hurt trust.',\n    'Keep language platform-native and human.'\n  ]\n};\n\nreturn [{ json: { ...input, evergreenLibrary, evergreenLibraryGeneratedAt: new Date().toISOString() } }];"
+        "jsCode": "const input = $input.first().json;\n\nconst fallbackTopicBank = [\n  { pillar: 'education', topic: 'Share a practical tip that helps the audience save time', angle: 'Teach something useful', cta: 'Invite the reader to try the tip today.' },\n  { pillar: 'behind_the_scenes', topic: 'Show what happens before a post goes live', angle: 'Humanize the process', cta: 'Invite people to follow for more behind-the-scenes context.' },\n  { pillar: 'trust', topic: 'Explain why consistency matters more than chasing virality', angle: 'Build credibility', cta: 'Encourage the audience to stay consistent.' },\n  { pillar: 'faq', topic: 'Answer a question people ask often', angle: 'Remove friction and confusion', cta: 'Invite more questions in the comments.' },\n  { pillar: 'proof', topic: 'Share a small, believable win or result', angle: 'Keep it grounded', cta: 'Invite people to see the full process.' },\n  { pillar: 'product', topic: 'Highlight one feature or service benefit', angle: 'Make the value concrete', cta: 'Prompt the audience to learn more.' },\n  { pillar: 'community', topic: 'Offer something helpful with no hard sell', angle: 'Build goodwill', cta: 'Invite the audience to save or share the post.' },\n  { pillar: 'promo', topic: 'Make a soft offer that feels natural', angle: 'Encourage action without pressure', cta: 'Invite a low-friction next step.' }\n];\n\nconst bankLines = String(input.topicBank || '')\n  .split(/\\r?\\n/)\n  .map((line) => line.trim())\n  .filter(Boolean);\n\nconst parsedBank = bankLines.map((line) => {\n  const parts = line.split('|').map((part) => part.trim());\n  return {\n    pillar: parts[0] || 'education',\n    topic: parts[1] || line,\n    angle: parts[2] || 'Provide practical guidance',\n    cta: parts[3] || 'Invite the audience to engage.'\n  };\n});\n\nconst topicBank = parsedBank.length > 0 ? parsedBank : fallbackTopicBank;\nconst daySeed = Math.floor(Date.now() / 86400000);\nconst selected = topicBank[daySeed % topicBank.length];\nconst generatedAt = new Date().toISOString();\n\nconst prompt = `You are writing for ${input.brandName}.\nAudience: ${input.audience}\nVoice: ${input.voice}\nToday's pillar: ${selected.pillar}\nToday's topic: ${selected.topic}\nStrategic angle: ${selected.angle}\nCTA direction: ${selected.cta}\n\nEvergreen content guidance:\n${JSON.stringify(input.evergreenLibrary || { pillars: [\"education\", \"trust\", \"proof\", \"community\", \"promo\"] }, null, 2)}\n\nCompliance rules:\n${input.complianceRules}\n\nCreate platform-specific draft copy for X, LinkedIn, Facebook, Instagram, and TikTok. Each platform must feel native and meaningfully different.\nAlso gather 3 video ideas and pick the best one for this topic. Pick one that is easy to film, easy to edit, and likely to perform well.\nReturn ONLY valid JSON with this exact structure:\n{\n  \"theme\": string,\n  \"strategic_angle\": string,\n  \"content_strategy\": string,\n  \"video_ideas\": [string],\n  \"recommended_video_idea\": string,\n  \"publish_targets\": [\"x\", \"linkedin\", \"facebook\", \"instagram\", \"tiktok\"],\n  \"x\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"linkedin\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"facebook\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"instagram\": { \"caption\": string, \"hashtags\": [string] },\n  \"tiktok\": { \"hook\": string, \"caption\": string, \"video_direction\": string, \"cta\": string, \"hashtags\": [string] },\n  \"quality\": { \"score\": number, \"risks\": [string], \"notes\": [string] },\n  \"recommended_next_step\": string,\n  \"compliance_notes\": [string]\n}\n\nRules:\n- Do not use markdown fences.\n- Do not add commentary outside JSON.\n- Keep X concise and punchy.\n- Keep LinkedIn polished, clear, and value-driven.\n- Keep Facebook conversational and trustworthy.\n- Keep Instagram concise, visual-first, and caption-friendly.\n- Keep TikTok geared toward a short video concept with a clear hook and visual direction.\n- Avoid hype language.\n- Make the copy feel human and specific, not generic.\n- Include a strong hook, a useful body, a clear CTA, and relevant hashtags where appropriate.\n- Use a quality.score from 1 to 10, where 10 means highly confident, compliant, and platform-fit.\n- If the content is too risky for approval, set recommended_next_step to human_review.\n- Otherwise set recommended_next_step to approval_ready.`;\n\nreturn [{ json: { brandName: input.brandName, audience: input.audience, voice: input.voice, platformTargets: input.platformTargets, reviewRecipient: input.reviewRecipient, senderEmail: input.senderEmail, tiktokAccessToken: input.tiktokAccessToken, tiktokVideoUrl: input.tiktokVideoUrl, tiktokPrivacyLevel: input.tiktokPrivacyLevel, tiktokDisableDuet: Boolean(input.tiktokDisableDuet), tiktokDisableComment: Boolean(input.tiktokDisableComment), tiktokDisableStitch: Boolean(input.tiktokDisableStitch), linkedinPersonId: input.linkedinPersonId, facebookPageId: input.facebookPageId, instagramBusinessId: input.instagramBusinessId, instagramImageUrl: input.instagramImageUrl, complianceRules: input.complianceRules, evergreenLibrary: input.evergreenLibrary, evergreenLibraryGeneratedAt: input.evergreenLibraryGeneratedAt, generatedAt, selectedPillar: selected.pillar, selectedTopic: selected.topic, selectedAngle: selected.angle, selectedCtaDirection: selected.cta, videoIdeaCandidates: [`Hook-first short video on ${selected.topic}`, `Behind-the-scenes clip showing how ${selected.angle.toLowerCase()} works`, `Question-and-answer video that answers a common objection about ${selected.topic}`], prompt } }];"
       },
-      "id": "f777975d-6195-45f3-aedd-f792db9d089c",
-      "name": "Content Library",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        352,
-        2896
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "planning-mode-weekly",
-              "leftValue": "={{ $json.planningMode }}",
-              "rightValue": "weekly",
-              "operator": {
-                "type": "string",
-                "operation": "equals",
-                "name": "filter.operator.equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "327a90a3-0b69-4cfd-878f-e1060be2e301",
-      "name": "Planning Mode?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        496,
-        2896
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst fallbackTopicBank = [\n  { pillar: 'education', topic: 'Share a practical tip that helps the audience save time', angle: 'Teach something useful', cta: 'Invite the reader to try the tip today.' },\n  { pillar: 'behind_the_scenes', topic: 'Show what happens before a post goes live', angle: 'Humanize the process', cta: 'Invite people to follow for more behind-the-scenes context.' },\n  { pillar: 'trust', topic: 'Explain why consistency matters more than chasing virality', angle: 'Build credibility', cta: 'Encourage the audience to stay consistent.' },\n  { pillar: 'faq', topic: 'Answer a question people ask often', angle: 'Remove friction and confusion', cta: 'Invite more questions in the comments.' },\n  { pillar: 'proof', topic: 'Share a small, believable win or result', angle: 'Keep it grounded', cta: 'Invite people to see the full process.' },\n  { pillar: 'product', topic: 'Highlight one feature or service benefit', angle: 'Make the value concrete', cta: 'Prompt the audience to learn more.' },\n  { pillar: 'community', topic: 'Offer something helpful with no hard sell', angle: 'Build goodwill', cta: 'Invite the audience to save or share the post.' },\n  { pillar: 'promo', topic: 'Make a soft offer that feels natural', angle: 'Encourage action without pressure', cta: 'Invite a low-friction next step.' }\n];\n\nconst bankLines = String(input.topicBank || '')\n  .split(/\\r?\\n/)\n  .map((line) => line.trim())\n  .filter(Boolean);\n\nconst parsedBank = bankLines.map((line) => {\n  const parts = line.split('|').map((part) => part.trim());\n  return {\n    pillar: parts[0] || 'education',\n    topic: parts[1] || line,\n    angle: parts[2] || 'Provide practical guidance',\n    cta: parts[3] || 'Invite the audience to engage.'\n  };\n});\n\nconst topicBank = parsedBank.length > 0 ? parsedBank : fallbackTopicBank;\nconst daySeed = Math.floor(Date.now() / 86400000);\nconst selected = topicBank[daySeed % topicBank.length];\nconst generatedAt = new Date().toISOString();\n\nconst prompt = `You are writing for ${input.brandName}.\nAudience: ${input.audience}\nVoice: ${input.voice}\nToday's pillar: ${selected.pillar}\nToday's topic: ${selected.topic}\nStrategic angle: ${selected.angle}\nCTA direction: ${selected.cta}\n\nEvergreen content library:\n${JSON.stringify(input.evergreenLibrary || {}, null, 2)}\n\nCompliance rules:\n${input.complianceRules}\n\nCreate platform-specific draft copy for X, LinkedIn, Facebook, Instagram, and TikTok. Each platform must feel native and meaningfully different.\nAlso gather 3 video ideas and pick the best one for this topic. Pick one that is easy to film, easy to edit, and likely to perform well.\nReturn ONLY valid JSON with this exact structure:\n{\n  \"theme\": string,\n  \"strategic_angle\": string,\n  \"content_strategy\": string,\n  \"video_ideas\": [string],\n  \"recommended_video_idea\": string,\n  \"publish_targets\": [\"x\", \"linkedin\", \"facebook\", \"instagram\", \"tiktok\"],\n  \"x\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"linkedin\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"facebook\": { \"hook\": string, \"body\": string, \"cta\": string, \"hashtags\": [string] },\n  \"instagram\": { \"caption\": string, \"hashtags\": [string] },\n  \"tiktok\": { \"hook\": string, \"caption\": string, \"video_direction\": string, \"cta\": string, \"hashtags\": [string] },\n  \"quality\": { \"score\": number, \"risks\": [string], \"notes\": [string] },\n  \"recommended_next_step\": string,\n  \"compliance_notes\": [string]\n}\n\nRules:\n- Do not use markdown fences.\n- Do not add commentary outside JSON.\n- Keep X concise and punchy.\n- Keep LinkedIn polished, clear, and value-driven.\n- Keep Facebook conversational and trustworthy.\n- Keep Instagram concise, visual-first, and caption-friendly.\n- Keep TikTok geared toward a short video concept with a clear hook and visual direction.\n- Avoid hype language.\n- Make the copy feel human and specific, not generic.\n- Include a strong hook, a useful body, a clear CTA, and relevant hashtags where appropriate.\n- Use a quality.score from 1 to 10, where 10 means highly confident, compliant, and platform-fit.\n- If the content is too risky for approval, set recommended_next_step to human_review.\n- Otherwise set recommended_next_step to approval_ready.`;\n\nreturn [{ json: { brandName: input.brandName, audience: input.audience, voice: input.voice, platformTargets: input.platformTargets, reviewRecipient: input.reviewRecipient, senderEmail: input.senderEmail, tiktokAccessToken: input.tiktokAccessToken, tiktokVideoUrl: input.tiktokVideoUrl, tiktokPrivacyLevel: input.tiktokPrivacyLevel, tiktokDisableDuet: Boolean(input.tiktokDisableDuet), tiktokDisableComment: Boolean(input.tiktokDisableComment), tiktokDisableStitch: Boolean(input.tiktokDisableStitch), linkedinPersonId: input.linkedinPersonId, facebookPageId: input.facebookPageId, instagramBusinessId: input.instagramBusinessId, instagramImageUrl: input.instagramImageUrl, complianceRules: input.complianceRules, evergreenLibrary: input.evergreenLibrary, evergreenLibraryGeneratedAt: input.evergreenLibraryGeneratedAt, generatedAt, selectedPillar: selected.pillar, selectedTopic: selected.topic, selectedAngle: selected.angle, selectedCtaDirection: selected.cta, videoIdeaCandidates: [`Hook-first short video on ${selected.topic}`, `Behind-the-scenes clip showing how ${selected.angle.toLowerCase()} works`, `Question-and-answer video that answers a common objection about ${selected.topic}`], prompt } }];"
-      },
-      "id": "8b671665-f953-4b9e-8ae8-bbcd5da27aeb",
+      "id": "8e509fb3-efe5-4981-9c6b-fc81df46170b",
       "name": "Content Planner",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        688,
-        3072
+        -1120,
+        240
       ]
     },
     {
@@ -240,164 +179,39 @@
           "systemMessage": "You are a senior social media strategist and copywriter. Produce premium, platform-native copy that is accurate, calm, helpful, and safe. Return only valid JSON and do not use markdown fences."
         }
       },
-      "id": "a1d8e986-2c39-4998-91a6-c9104dbceb48",
+      "id": "dfad448c-b66f-4976-a388-78468c0118a5",
       "name": "Content Generator",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        1072,
-        3072
+        -672,
+        240
       ]
     },
     {
       "parameters": {
         "jsCode": "const input = $input.first().json;\n\nfunction extractText(value) {\n  if (typeof value === 'string') return value;\n  if (!value || typeof value !== 'object') return value;\n  if (typeof value.output === 'string') return value.output;\n  if (typeof value.response === 'string') return value.response;\n  if (typeof value.text === 'string') return value.text;\n  if (typeof value.message === 'string') return value.message;\n  if (typeof value.content === 'string') return value.content;\n  if (Array.isArray(value.generations) && value.generations[0]?.[0]?.text) return value.generations[0][0].text;\n  return value;\n}\n\nconst candidate = extractText(input);\nlet parsed = candidate;\nlet parseError = null;\n\nif (typeof candidate === 'string') {\n  const cleaned = candidate.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```$/i, '');\n  try {\n    parsed = JSON.parse(cleaned);\n  } catch (error) {\n    parseError = error.message;\n    parsed = null;\n  }\n}\n\nconst requiredPlatforms = ['x', 'linkedin', 'facebook', 'instagram', 'tiktok'];\nconst validationIssues = [];\nconst warnings = [];\n\nif (!parsed) {\n  validationIssues.push('json_parse_failed');\n}\n\nfor (const platform of requiredPlatforms) {\n  const platformData = parsed?.[platform];\n  if (!platformData) {\n    validationIssues.push(`${platform}_missing`);\n    continue;\n  }\n\n  if (platform === 'instagram') {\n    if (!platformData.caption) validationIssues.push('instagram_caption_missing');\n  } else if (platform === 'tiktok') {\n    if (!platformData.hook || !platformData.caption || !platformData.video_direction || !platformData.cta) {\n      validationIssues.push('tiktok_missing_required_fields');\n    }\n  } else if (!platformData.hook || !platformData.body || !platformData.cta) {\n    validationIssues.push(`${platform}_missing_required_fields`);\n  }\n\n  if (!Array.isArray(platformData.hashtags)) {\n    validationIssues.push(`${platform}_hashtags_missing`);\n  }\n}\n\nconst flatText = [\n  parsed?.theme,\n  parsed?.strategic_angle,\n  parsed?.content_strategy,\n  parsed?.x?.hook,\n  parsed?.x?.body,\n  parsed?.x?.cta,\n  parsed?.linkedin?.hook,\n  parsed?.linkedin?.body,\n  parsed?.linkedin?.cta,\n  parsed?.facebook?.hook,\n  parsed?.facebook?.body,\n  parsed?.facebook?.cta,\n  parsed?.instagram?.caption,\n  parsed?.tiktok?.hook,\n  parsed?.tiktok?.caption,\n  parsed?.tiktok?.video_direction,\n  parsed?.tiktok?.cta\n].filter(Boolean).join(' ').toLowerCase();\n\nconst bannedPatterns = [/guarantee/i, /100%/i, /miracle/i, /cure/i, /medical advice/i, /diagnos/i, /treat/i, /false scarcity/i, /best plan for everyone/i, /no risk/i];\nconst bannedHits = bannedPatterns.filter((pattern) => pattern.test(flatText));\nif (bannedHits.length > 0) {\n  warnings.push(`risky_language:${bannedHits.length}`);\n}\n\nconst containsEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i.test(flatText);\nconst containsPhone = /(?:\\+?\\d{1,2}[\\s.-]?)?(?:\\(?\\d{3}\\)?[\\s.-]?)\\d{3}[\\s.-]?\\d{4}/.test(flatText);\nif (containsEmail || containsPhone) {\n  warnings.push('contact_info_detected');\n}\n\nconst tiktokVideoReady = typeof input.tiktokVideoUrl === 'string' && /^https?:\\/\\//i.test(input.tiktokVideoUrl);\nconst tiktokTokenReady = typeof input.tiktokAccessToken === 'string' && input.tiktokAccessToken.length > 10 && !input.tiktokAccessToken.startsWith('YOUR_');\nif (!tiktokVideoReady) warnings.push('tiktok_video_url_missing');\nif (!tiktokTokenReady) warnings.push('tiktok_access_token_missing');\n\nconst qualityScore = Number(parsed?.quality?.score ?? 0);\nlet trustScore = Math.max(0, Math.min(100, qualityScore * 10));\nif (qualityScore >= 8) trustScore += 5;\nif (qualityScore <= 6) trustScore -= 10;\nif (warnings.length > 0) trustScore -= 10 * warnings.length;\nif (validationIssues.length > 0) trustScore = 0;\ntrustScore = Math.max(0, Math.min(100, trustScore));\n\nreturn [{ json: { generatedAt: input.generatedAt || new Date().toISOString(), brandName: input.brandName, audience: input.audience, voice: input.voice, selectedPillar: input.selectedPillar, selectedTopic: input.selectedTopic, selectedAngle: input.selectedAngle, selectedCtaDirection: input.selectedCtaDirection, videoIdeaCandidates: Array.isArray(input.videoIdeaCandidates) ? input.videoIdeaCandidates : [], trustScore, complianceStatus: validationIssues.length === 0 && warnings.length === 0 ? 'pass' : 'review', validationIssues, warnings, parseError, theme: parsed?.theme ?? null, strategic_angle: parsed?.strategic_angle ?? null, content_strategy: parsed?.content_strategy ?? null, video_ideas: Array.isArray(parsed?.video_ideas) ? parsed.video_ideas : [], recommended_video_idea: parsed?.recommended_video_idea ?? null, publish_targets: Array.isArray(parsed?.publish_targets) ? parsed.publish_targets : ['x', 'linkedin', 'facebook', 'instagram', 'tiktok'], x: parsed?.x ?? null, linkedin: parsed?.linkedin ?? null, facebook: parsed?.facebook ?? null, instagram: parsed?.instagram ?? null, tiktok: parsed?.tiktok ?? null, quality: parsed?.quality ?? null, recommended_next_step: parsed?.recommended_next_step ?? 'approval_ready', compliance_notes: Array.isArray(parsed?.compliance_notes) ? parsed.compliance_notes : [], tiktokVideoReady, tiktokTokenReady, raw_output: typeof candidate === 'string' ? candidate : JSON.stringify(candidate) } }];"
       },
-      "id": "fa45c1b9-a2cb-4361-976e-86753e501e4f",
+      "id": "bba94b7b-e288-4371-84ca-757d98ff1fce",
       "name": "Content QA",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1360,
-        3072
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst today = new Date();\nconst start = new Date(today);\nstart.setHours(0, 0, 0, 0);\nconst dayOfWeek = start.getDay();\nconst diffToMonday = (dayOfWeek + 6) % 7;\nstart.setDate(start.getDate() - diffToMonday);\nconst end = new Date(start);\nend.setDate(end.getDate() + 6);\n\nconst weekStart = start.toISOString().slice(0, 10);\nconst weekEnd = end.toISOString().slice(0, 10);\nconst generatedAt = new Date().toISOString();\n\nconst prompt = `You are creating a weekly social media posting plan for ${input.brandName}.\nAudience: ${input.audience}\nVoice: ${input.voice}\nPlatforms: ${input.platformTargets}\nWeek start: ${weekStart}\nWeek end: ${weekEnd}\n\nEvergreen content library:\n${JSON.stringify(input.evergreenLibrary || {}, null, 2)}\n\nCompliance rules:\n${input.complianceRules}\n\nCreate a 7-day posting plan with a realistic mix across the requested platforms. Include a top-level video_ideas array and a video_idea field on each daily_plan item. Do not repeat the same platform too often; prioritize variety and intent.\nReturn ONLY valid JSON with this exact structure:\n{\n  \"week_start\": string,\n  \"week_end\": string,\n  \"theme\": string,\n  \"objectives\": [string],\n  \"cadence\": string,\n  \"daily_plan\": [\n    {\n      \"day\": string,\n      \"platform\": string,\n      \"post_type\": string,\n      \"topic\": string,\n      \"hook\": string,\n      \"angle\": string,\n      \"cta\": string,\n      \"asset_needed\": string,\n      \"notes\": string,\n      \"video_idea\": string\n    }\n  ],\n  \"video_ideas\": [string],\n  \"risk_checks\": [string],\n  \"approval_notes\": [string]\n}\n\nRules:\n- Include exactly 7 daily_plan items.\n- Spread content across X, LinkedIn, Facebook, Instagram, and TikTok when appropriate.\n- Make the plan practical, realistic, and brand-safe.\n- Avoid repetitive angles.\n- Keep the plan ready for human review.`;\n\nreturn [{ json: { ...input, weekStart, weekEnd, generatedAt, weeklyPrompt: prompt } }];"
-      },
-      "id": "bf8abb0b-01da-4b97-a993-14c6438dc366",
-      "name": "Weekly Plan Builder",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        688,
-        2720
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "={{ $json.weeklyPrompt }}",
-        "options": {
-          "systemMessage": "You are a senior social media strategist. Produce a concrete weekly posting plan that is useful, realistic, and brand-safe. Return only valid JSON and do not use markdown fences."
-        }
-      },
-      "id": "ae67b037-1256-4950-b363-7f20773f062a",
-      "name": "Weekly Plan Generator",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 3.1,
-      "position": [
-        1072,
-        2720
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nfunction extractText(value) {\n  if (typeof value === 'string') return value;\n  if (!value || typeof value !== 'object') return value;\n  if (typeof value.output === 'string') return value.output;\n  if (typeof value.response === 'string') return value.response;\n  if (typeof value.text === 'string') return value.text;\n  if (typeof value.message === 'string') return value.message;\n  if (typeof value.content === 'string') return value.content;\n  if (Array.isArray(value.generations) && value.generations[0]?.[0]?.text) return value.generations[0][0].text;\n  return value;\n}\n\nconst candidate = extractText(input);\nlet parsed = candidate;\nlet parseError = null;\n\nif (typeof candidate === 'string') {\n  const cleaned = candidate.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/i, '').replace(/```$/i, '');\n  try {\n    parsed = JSON.parse(cleaned);\n  } catch (error) {\n    parseError = error.message;\n    parsed = null;\n  }\n}\n\nconst dailyPlan = Array.isArray(parsed?.daily_plan) ? parsed.daily_plan : [];\nconst validationIssues = [];\n\nif (!parsed) validationIssues.push('json_parse_failed');\nif (dailyPlan.length !== 7) validationIssues.push('daily_plan_must_have_7_items');\nfor (const item of dailyPlan) {\n  if (!item.day || !item.platform || !item.post_type || !item.topic || !item.hook || !item.cta) {\n    validationIssues.push('daily_plan_item_missing_required_fields');\n    break;\n  }\n}\n\nreturn [{ json: { ...input, weeklyParsed: parsed, weeklyParseError: parseError, weeklyValidationIssues: validationIssues, weeklyVideoIdeas: Array.isArray(parsed?.video_ideas) ? parsed.video_ideas : Array.isArray(input.weeklyVideoIdeas) ? input.weeklyVideoIdeas : [], weeklyEmailSubject: `Weekly posting plan: ${input.brandName} (${input.weekStart} to ${input.weekEnd})`, weeklyEmailText: parsed ? JSON.stringify(parsed, null, 2) : (typeof candidate === 'string' ? candidate : JSON.stringify(candidate, null, 2)), weeklySlackText: parsed ? `Week ${input.weekStart} to ${input.weekEnd}\\n` + JSON.stringify(parsed, null, 2) : (typeof candidate === 'string' ? candidate : JSON.stringify(candidate, null, 2)) } }];"
-      },
-      "id": "51ff6575-a9c8-48a6-b514-0e9073838ae4",
-      "name": "Weekly Plan QA",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1376,
-        2720
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst dailyPlatforms = Array.isArray(input.weeklyParsed?.daily_plan)\n  ? input.weeklyParsed.daily_plan.map((item) => item.platform).filter(Boolean)\n  : [];\n\nconst weeklyAuditSummary = {\n  workflowMode: 'weekly',\n  runId: input.generatedAt || new Date().toISOString(),\n  brandName: input.brandName,\n  weekStart: input.weekStart,\n  weekEnd: input.weekEnd,\n  theme: input.weeklyParsed?.theme || null,\n  objectiveCount: Array.isArray(input.weeklyParsed?.objectives) ? input.weeklyParsed.objectives.length : 0,\n  dailyPlanCount: Array.isArray(input.weeklyParsed?.daily_plan) ? input.weeklyParsed.daily_plan.length : 0,\n  platforms: dailyPlatforms,\n  validationIssues: Array.isArray(input.weeklyValidationIssues) ? input.weeklyValidationIssues : [],\n  parseError: input.weeklyParseError || null\n};\n\nreturn [{ json: { ...input, weeklyAuditSummary, weeklyAuditLine: JSON.stringify(weeklyAuditSummary, null, 2) } }];"
-      },
-      "id": "c56d90a6-419e-4924-ba46-4250a722736f",
-      "name": "Weekly Audit Summary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1552,
-        2720
-      ]
-    },
-    {
-      "parameters": {
-        "tableId": "social_media_run_log",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "runId",
-              "fieldValue": "={{ $json.generatedAt }}"
-            },
-            {
-              "fieldId": "workflowMode",
-              "fieldValue": "weekly"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "weekly_plan_ready"
-            },
-            {
-              "fieldId": "brandName",
-              "fieldValue": "={{ $json.brandName }}"
-            },
-            {
-              "fieldId": "weekStart",
-              "fieldValue": "={{ $json.weekStart }}"
-            },
-            {
-              "fieldId": "weekEnd",
-              "fieldValue": "={{ $json.weekEnd }}"
-            },
-            {
-              "fieldId": "theme",
-              "fieldValue": "={{ $json.weeklyParsed?.theme || \"\" }}"
-            },
-            {
-              "fieldId": "objectiveCount",
-              "fieldValue": "={{ Array.isArray($json.weeklyParsed?.objectives) ? $json.weeklyParsed.objectives.length : 0 }}"
-            },
-            {
-              "fieldId": "dailyPlanCount",
-              "fieldValue": "={{ Array.isArray($json.weeklyParsed?.daily_plan) ? $json.weeklyParsed.daily_plan.length : 0 }}"
-            },
-            {
-              "fieldId": "platforms",
-              "fieldValue": "={{ JSON.stringify($json.weeklyParsed?.daily_plan?.map((item) => item.platform).filter(Boolean) || []) }}"
-            },
-            {
-              "fieldId": "validationIssues",
-              "fieldValue": "={{ JSON.stringify($json.weeklyValidationIssues || []) }}"
-            },
-            {
-              "fieldId": "parseError",
-              "fieldValue": "={{ $json.weeklyParseError || \"\" }}"
-            },
-            {
-              "fieldId": "loggedAt",
-              "fieldValue": "={{ new Date().toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "f3d69d0b-a6bb-417f-a29f-6060526afbee",
-      "name": "Weekly Run Log",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        1744,
-        2720
+        -368,
+        240
       ]
     },
     {
       "parameters": {
         "jsCode": "const input = $input.first().json;\n\nconst hashtagsToString = (value) => Array.isArray(value) && value.length > 0 ? value.map((tag) => tag.startsWith('#') ? tag : `#${tag}`).join(' ') : '';\nconst joinParts = (...parts) => parts.filter(Boolean).join('\\n\\n');\n\nconst xFinalText = joinParts(input.x?.hook, input.x?.body, input.x?.cta, hashtagsToString(input.x?.hashtags));\nconst linkedinFinalText = joinParts(input.linkedin?.hook, input.linkedin?.body, input.linkedin?.cta, hashtagsToString(input.linkedin?.hashtags));\nconst facebookFinalText = joinParts(input.facebook?.hook, input.facebook?.body, input.facebook?.cta, hashtagsToString(input.facebook?.hashtags));\nconst instagramFinalCaption = joinParts(input.instagram?.caption, hashtagsToString(input.instagram?.hashtags));\nconst tiktokFinalCaption = joinParts(input.tiktok?.hook, input.tiktok?.caption, input.tiktok?.cta, hashtagsToString(input.tiktok?.hashtags));\n\nconst approvalSubject = `Approval needed: ${input.brandName} social package - ${input.selectedTopic}`;\nconst approvalSlackText = [\n  `*Approval needed:* ${input.brandName}`,\n  `*Topic:* ${input.selectedTopic}`,\n  `*Angle:* ${input.selectedAngle}`,\n  `*Trust score:* ${input.trustScore}`,\n  `*Compliance:* ${input.complianceStatus}`,\n  `*Video idea candidates:* ${(Array.isArray(input.videoIdeaCandidates) ? input.videoIdeaCandidates : []).join(' | ') || 'n/a'}`,\n  `*Recommended video idea:* ${input.recommended_video_idea || (Array.isArray(input.video_ideas) ? input.video_ideas[0] : 'n/a')}`,\n  `*TikTok ready:* ${input.tiktokVideoReady && input.tiktokTokenReady ? 'yes' : 'no'}`,\n  ``,\n  `*X draft:*`,\n  xFinalText,\n  ``,\n  `*LinkedIn draft:*`,\n  linkedinFinalText,\n  ``,\n  `*Facebook draft:*`,\n  facebookFinalText,\n  ``,\n  `*Instagram draft:*`,\n  instagramFinalCaption,\n  ``,\n  `*TikTok draft:*`,\n  tiktokFinalCaption,\n].join('\\n');\n\nreturn [{ json: { ...input, xFinalText, linkedinFinalText, facebookFinalText, instagramFinalCaption, tiktokFinalCaption, approvalSubject, approvalSlackText, reviewRecipient: input.reviewRecipient, approvalSlackChannelId: input.approvalSlackChannelId, senderEmail: input.senderEmail, tiktokReady: Boolean(input.tiktokVideoReady && input.tiktokTokenReady), videoIdeaCandidates: Array.isArray(input.videoIdeaCandidates) ? input.videoIdeaCandidates : [], recommended_video_idea: input.recommended_video_idea || (Array.isArray(input.video_ideas) ? input.video_ideas[0] : null), approvalSummary: { trustScore: input.trustScore, complianceStatus: input.complianceStatus, selectedTopic: input.selectedTopic, selectedAngle: input.selectedAngle, tiktokReady: Boolean(input.tiktokVideoReady && input.tiktokTokenReady) } } }];"
       },
-      "id": "5e101dd6-5bc3-4b6b-ba85-0b81cdb262ce",
+      "id": "31892bf0-4cab-404c-b425-c19fed08e59b",
       "name": "Approval Packager",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1520,
-        3072
+        -192,
+        240
       ]
     },
     {
@@ -413,44 +227,15 @@
         "text": "={{ $json.approvalSlackText + '\\n\\nApprove: ' + $execution.resumeUrl + '?decision=approve' + '\\nReject: ' + $execution.resumeUrl + '?decision=reject' }}",
         "otherOptions": {}
       },
-      "id": "b604008c-4cfb-4aa3-a053-77b42ba7437d",
+      "id": "3b1b139b-3b6c-4fd5-8e88-8c0f1d8ed7bc",
       "name": "Approval Request Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        1696,
-        3072
+        16,
+        240
       ],
       "webhookId": "1ff46c9e-6b28-4d64-a309-1135f64c8a59",
-      "credentials": {
-        "slackOAuth2Api": {
-          "id": "hbRCgZYkERc0TLjm",
-          "name": "Slack account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "authentication": "oAuth2",
-        "select": "channel",
-        "channelId": {
-          "__rl": true,
-          "value": "C0ARCE5PT42",
-          "mode": "list",
-          "cachedResultName": "social-media-weekly-plans"
-        },
-        "text": "={{ \"*Weekly posting plan*\\n\" + $json.weeklySlackText }}",
-        "otherOptions": {}
-      },
-      "id": "c135b563-a1a5-420b-ad80-aa2d813e787d",
-      "name": "Weekly Plan Slack",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.3,
-      "position": [
-        1952,
-        2720
-      ],
-      "webhookId": "b74a282d-d56d-4f0e-a923-f0418749ea0d",
       "credentials": {
         "slackOAuth2Api": {
           "id": "hbRCgZYkERc0TLjm",
@@ -467,13 +252,13 @@
         "resumeUnit": "days",
         "options": {}
       },
-      "id": "a39b371f-147e-47e4-9b30-0f5dc9bfb109",
+      "id": "aee3dd1e-5e79-43f2-a5df-f348bbc80c06",
       "name": "Approval Wait",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1872,
-        3072
+        224,
+        240
       ],
       "webhookId": "f2db0f53-7f0d-4f85-92df-5f6d6d3bda1d"
     },
@@ -481,26 +266,26 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\n\nconst candidate = [input.decision, input.query?.decision, input.body?.decision, input.queryParameters?.decision, input.request?.query?.decision, input.request?.body?.decision, input.data?.decision].find((value) => typeof value === 'string' && value.length > 0);\nconst decision = String(candidate || '').trim().toLowerCase();\nconst approved = ['approve', 'approved', 'yes', 'true', '1'].includes(decision);\nconst rejected = ['reject', 'rejected', 'no', 'false', '0'].includes(decision);\n\nreturn [{ json: { ...input, approvalDecision: approved ? 'approved' : rejected ? 'rejected' : 'unknown', approved, approvalReason: approved ? 'Human approved the package.' : rejected ? 'Human rejected the package.' : 'No explicit decision detected on the resume request.', approvalReceivedAt: new Date().toISOString() } }];"
       },
-      "id": "7670e330-bae0-4905-ad00-300f8e68b4e9",
+      "id": "cf4d0bbc-e67b-463a-b6d9-d78ae54b811c",
       "name": "Approval Decision",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2032,
-        3072
+        416,
+        240
       ]
     },
     {
       "parameters": {
         "jsCode": "const input = $input.first().json;\n\nconst auditSummary = {\n  workflowMode: 'daily',\n  runId: input.generatedAt || new Date().toISOString(),\n  approvalDecision: input.approvalDecision,\n  approved: Boolean(input.approved),\n  brandName: input.brandName,\n  selectedPillar: input.selectedPillar,\n  selectedTopic: input.selectedTopic,\n  selectedAngle: input.selectedAngle,\n  trustScore: input.trustScore,\n  complianceStatus: input.complianceStatus,\n  tiktokReady: Boolean(input.tiktokReady),\n  recommendedVideoIdea: input.recommended_video_idea || null,\n  videoIdeaCandidates: Array.isArray(input.videoIdeaCandidates) ? input.videoIdeaCandidates : [],\n  approvedAt: input.approvalReceivedAt || null\n};\n\nreturn [{ json: { ...input, auditSummary, auditLine: JSON.stringify(auditSummary, null, 2) } }];"
       },
-      "id": "99ddda24-3581-4c0f-a20c-818f4d4db41b",
+      "id": "36eb36c7-7fb1-4c50-9176-5d6031c7e377",
       "name": "Run Audit Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2208,
-        3072
+        624,
+        240
       ]
     },
     {
@@ -571,13 +356,13 @@
           ]
         }
       },
-      "id": "3414ef01-51b0-4731-8a1e-65a8068a0df3",
+      "id": "afbb58a2-fab5-48f8-af25-a134f41287d8",
       "name": "Daily Run Log",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
       "position": [
-        2368,
-        3072
+        832,
+        240
       ]
     },
     {
@@ -605,13 +390,13 @@
         },
         "options": {}
       },
-      "id": "10d64628-c798-4c05-99d2-18f450df0f53",
+      "id": "bc77c9b6-0e44-4506-ab62-8682a957b5da",
       "name": "Approved?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2560,
-        3072
+        1024,
+        240
       ]
     },
     {
@@ -619,13 +404,13 @@
         "text": "={{ $json.xFinalText }}",
         "additionalFields": {}
       },
-      "id": "9c7cb735-85f0-48a9-9e76-5959faacdb89",
+      "id": "7b90422b-5cb4-4f2a-9015-571ae611429a",
       "name": "X Publish",
       "type": "n8n-nodes-base.twitter",
       "typeVersion": 2,
       "position": [
-        2912,
-        2320
+        1568,
+        -160
       ],
       "continueOnFail": true
     },
@@ -633,13 +418,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nreturn [{ json: { ...input, publishPlatform: 'X', publishSucceeded: !input.error, publishErrorText: input.error?.message || input.error || '' } }];"
       },
-      "id": "cc7147c9-2d2e-48f3-abad-38ef4759d012",
+      "id": "b1b09db0-6199-4ce4-8076-2341428c6222",
       "name": "X Publish Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2752,
-        2320
+        1344,
+        -160
       ]
     },
     {
@@ -667,13 +452,13 @@
         },
         "options": {}
       },
-      "id": "95c180f5-686a-4b9d-a433-ea77eedfe677",
+      "id": "9364e7bb-3faa-4641-95f3-0fe33e518bf2",
       "name": "X Publish Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3056,
-        2320
+        1888,
+        -160
       ]
     },
     {
@@ -682,13 +467,13 @@
         "text": "={{ $json.linkedinFinalText }}",
         "additionalFields": {}
       },
-      "id": "36302d1c-e5b9-4f76-821d-1d88e8f8d58a",
+      "id": "9d8d358b-1c4d-4a64-a86f-9a4b6087004d",
       "name": "LinkedIn Publish",
       "type": "n8n-nodes-base.linkedIn",
       "typeVersion": 1,
       "position": [
-        2960,
-        2640
+        1568,
+        112
       ],
       "continueOnFail": true
     },
@@ -696,13 +481,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nreturn [{ json: { ...input, publishPlatform: 'LinkedIn', publishSucceeded: !input.error, publishErrorText: input.error?.message || input.error || '' } }];"
       },
-      "id": "6d5da338-bd12-41b9-935a-bf1e26818279",
+      "id": "87147dd2-b23c-46fa-add8-5c4341653384",
       "name": "LinkedIn Publish Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2784,
-        2640
+        1312,
+        112
       ]
     },
     {
@@ -730,13 +515,13 @@
         },
         "options": {}
       },
-      "id": "e971c6f2-82cc-4963-abbd-052ae574714c",
+      "id": "d6b22307-f3e1-4576-8344-21642c5ecdaf",
       "name": "LinkedIn Publish Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3120,
-        2640
+        1872,
+        112
       ]
     },
     {
@@ -756,13 +541,13 @@
           }
         }
       },
-      "id": "13aecce1-4206-4658-a818-9842e57f3f6c",
+      "id": "ac276f8d-6552-49a5-966b-418894f38290",
       "name": "Facebook Publish",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
-        2944,
-        2816
+        1552,
+        272
       ],
       "continueOnFail": true
     },
@@ -770,13 +555,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nreturn [{ json: { ...input, publishPlatform: 'Facebook', publishSucceeded: !input.error, publishErrorText: input.error?.message || input.error || '' } }];"
       },
-      "id": "357c0d45-897e-4679-8c28-973033c974e3",
+      "id": "52eb2171-9f3d-454d-88ad-c3c45ad61bbb",
       "name": "Facebook Publish Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2784,
-        2816
+        1296,
+        256
       ]
     },
     {
@@ -804,13 +589,13 @@
         },
         "options": {}
       },
-      "id": "8912e53f-5aac-41d9-b60c-3a67116f1ee4",
+      "id": "f1b41088-49a7-407b-b56a-d22eb28c0aff",
       "name": "Facebook Publish Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3120,
-        2816
+        1856,
+        288
       ]
     },
     {
@@ -834,13 +619,13 @@
           }
         }
       },
-      "id": "bcd56206-776a-4c93-9f1e-2ae835cab547",
+      "id": "4d602bbe-34f5-47c2-836e-b6333d96b023",
       "name": "Instagram Create Container",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
-        5872,
-        3200
+        1440,
+        416
       ],
       "continueOnFail": true
     },
@@ -861,13 +646,13 @@
           }
         }
       },
-      "id": "c3885e10-187f-4a37-81b6-52e9e567a4ef",
+      "id": "ee193af1-7900-4b0c-92b5-3b7e5c66978f",
       "name": "Instagram Publish",
       "type": "n8n-nodes-base.facebookGraphApi",
       "typeVersion": 1,
       "position": [
-        6112,
-        3152
+        2032,
+        496
       ],
       "continueOnFail": true
     },
@@ -875,13 +660,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nreturn [{ json: { ...input, publishPlatform: 'Instagram', publishSucceeded: !input.error, publishErrorText: input.error?.message || input.error || '' } }];"
       },
-      "id": "5631b779-5504-400a-b379-096448468fe8",
+      "id": "37cf30df-8b73-4e27-90b8-c064743fcc6e",
       "name": "Instagram Publish Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5440,
-        3104
+        1280,
+        480
       ]
     },
     {
@@ -909,13 +694,13 @@
         },
         "options": {}
       },
-      "id": "bf63dc14-7ec6-4d92-8755-44beaed338f4",
+      "id": "170dbacd-0082-4879-86db-d764a46f4a99",
       "name": "Instagram Publish Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        6400,
-        3152
+        2528,
+        464
       ]
     },
     {
@@ -927,13 +712,13 @@
         "bodyParametersJson": "{\n  \"post_info\": {\n    \"title\": \"{{$json.tiktokCaption || $json.tiktokFinalCaption}}\",\n    \"privacy_level\": \"{{$json.tiktokPrivacyLevel}}\",\n    \"disable_duet\": {{$json.tiktokDisableDuet}},\n    \"disable_comment\": {{$json.tiktokDisableComment}},\n    \"disable_stitch\": {{$json.tiktokDisableStitch}}\n  },\n  \"source_info\": {\n    \"source\": \"PULL_FROM_URL\",\n    \"video_url\": \"{{$json.tiktokVideoUrl}}\"\n  }\n}",
         "headerParametersJson": "{\n  \"Authorization\": \"Bearer {{$json.tiktokAccessToken}}\",\n  \"Content-Type\": \"application/json; charset=UTF-8\"\n}"
       },
-      "id": "d83c61eb-5b70-4c42-af5a-c406abec6afd",
+      "id": "926e51b8-48a7-4acb-94d4-25c1352672b0",
       "name": "TikTok Publish Init",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
       "position": [
-        5392,
-        3424
+        2240,
+        688
       ],
       "continueOnFail": true
     },
@@ -941,13 +726,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nreturn [{ json: { ...input, publishPlatform: 'TikTok', publishSucceeded: !input.error, publishErrorText: input.error?.message || input.error || '' } }];"
       },
-      "id": "1e72532a-26de-4c87-993f-94f9031202c9",
+      "id": "a734d8f2-0b49-4193-a653-b317a6d9f116",
       "name": "TikTok Publish Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5008,
-        2960
+        1456,
+        688
       ]
     },
     {
@@ -975,13 +760,13 @@
         },
         "options": {}
       },
-      "id": "0d725b66-8f7c-424e-a4e2-538b211dd4ba",
+      "id": "d5a96d18-c957-4703-9894-f40db9470936",
       "name": "TikTok Publish Failed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5904,
-        3440
+        2528,
+        688
       ]
     },
     {
@@ -1009,26 +794,26 @@
         },
         "options": {}
       },
-      "id": "0aa872a6-6615-46f7-ae8c-a44438d9e9b1",
+      "id": "874cfc90-5d7a-4abd-809e-8b79d9b91c78",
       "name": "TikTok Ready?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5040,
-        3424
+        1968,
+        976
       ]
     },
     {
       "parameters": {
         "jsCode": "return [{ json: { skipped: true, reason: 'TikTok credentials or video URL are missing, so the TikTok branch stayed draft-only.', ...$input.first().json } }];"
       },
-      "id": "a137b859-e544-41d1-88a0-21ad5231e818",
+      "id": "bcf82652-11f4-40f9-88d6-2ceb35c0e311",
       "name": "TikTok Draft Only",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5184,
-        3808
+        2528,
+        1040
       ]
     },
     {
@@ -1044,13 +829,13 @@
         "text": "={{ \"*Approval rejected:* \" + $json.brandName + \"\\n*Topic:* \" + ($json.selectedTopic || \"n/a\") + \"\\n*Reason:* \" + ($json.approvalReason || \"n/a\") + \"\\n*Trust score:* \" + $json.trustScore }}",
         "otherOptions": {}
       },
-      "id": "bb91b3f1-8e39-4666-96f0-0a30d578e8f5",
+      "id": "c7929cc4-b22d-4d14-9d08-7e8d0c246b29",
       "name": "Rejection Notice Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        2448,
-        3744
+        1168,
+        928
       ],
       "webhookId": "865e8ee9-30aa-48c5-945a-6b5cdec55cd9",
       "credentials": {
@@ -1070,182 +855,13 @@
         "builtInTools": {},
         "options": {}
       },
-      "id": "4d7d98a2-3000-4f4b-add1-a8eaf5009bb0",
+      "id": "b099eb50-8a29-4dbe-9a87-5654eb1c72cc",
       "name": "OpenAI Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
       "position": [
-        1072,
-        2912
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\n\nconst weeklyVideoIdeas = [\n  `Educational reel: ${input.selectedTopic || 'core topic'} in under 30 seconds`,\n  `Behind-the-scenes clip showing how the post is planned`,\n  `FAQ style video answering the most common objection`\n];\n\nconst prompt = `${input.weeklyPrompt}\n\nVideo idea guidance:\n- Include 2 to 3 video ideas for each day in a video_ideas array.\n- Add a recommended primary video concept to every daily_plan item as video_idea.\n- Keep production realistic for one creator or small team.\n- Include shot list, hook, and edit notes inside each daily_plan item when possible.\n\nStarter weekly video ideas:\n${weeklyVideoIdeas.map((idea, index) => `${index + 1}. ${idea}`).join('\n')}`;\n\nreturn [{ json: { ...input, weeklyVideoIdeas, weeklyPrompt: prompt } }];"
-      },
-      "id": "05ecd841-f1e7-4d47-9833-0b5ad1f6a2c8",
-      "name": "Weekly Creative Brief",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        864,
-        2720
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst videoIdeaCandidates = [\n  `Hook-first short video on ${input.selectedTopic || 'the chosen topic'}`,\n  `Behind-the-scenes clip showing how ${input.selectedAngle ? input.selectedAngle.toLowerCase() : 'the idea'} works`,\n  `Question-and-answer video that answers a common objection about ${input.selectedTopic || 'the topic'}`\n];\n\nconst prompt = `${input.prompt}\n\nVideo idea guidance:\n- Generate 3 video ideas.\n- Put them in a top-level video_ideas array.\n- Choose one recommended_video_idea.\n- Include a simple shot list and on-screen hook for the TikTok section.\n- Keep the ideas realistic to produce within one shoot.\n\nStarter video idea candidates:\n${videoIdeaCandidates.map((idea, index) => `${index + 1}. ${idea}`).join('\n')}`;\n\nreturn [{ json: { ...input, videoIdeaCandidates, prompt } }];"
-      },
-      "id": "4975c501-ccdd-4dc7-ae9e-8b7e45866323",
-      "name": "Video Idea Builder",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        848,
-        3072
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "brand_name",
-              "name": "brandName",
-              "value": "Your Brand",
-              "type": "string"
-            },
-            {
-              "id": "audience",
-              "name": "audience",
-              "value": "Your ideal audience",
-              "type": "string"
-            },
-            {
-              "id": "voice",
-              "name": "voice",
-              "value": "Clear, trustworthy, concise, and human",
-              "type": "string"
-            },
-            {
-              "id": "platform_targets",
-              "name": "platformTargets",
-              "value": "x,linkedin,facebook,instagram,tiktok",
-              "type": "string"
-            },
-            {
-              "id": "review_recipient",
-              "name": "reviewRecipient",
-              "value": "approver@example.com",
-              "type": "string"
-            },
-            {
-              "id": "approval_slack_channel_id",
-              "name": "approvalSlackChannelId",
-              "value": "C0123456789",
-              "type": "string"
-            },
-            {
-              "id": "sender_email",
-              "name": "senderEmail",
-              "value": "n8n@example.com",
-              "type": "string"
-            },
-            {
-              "id": "tiktok_access_token",
-              "name": "tiktokAccessToken",
-              "value": "YOUR_TIKTOK_ACCESS_TOKEN",
-              "type": "string"
-            },
-            {
-              "id": "tiktok_video_url",
-              "name": "tiktokVideoUrl",
-              "value": "https://example.com/video.mp4",
-              "type": "string"
-            },
-            {
-              "id": "tiktok_privacy_level",
-              "name": "tiktokPrivacyLevel",
-              "value": "SELF_ONLY",
-              "type": "string"
-            },
-            {
-              "id": "tiktok_disable_duet",
-              "name": "tiktokDisableDuet",
-              "value": true,
-              "type": "boolean"
-            },
-            {
-              "id": "tiktok_disable_comment",
-              "name": "tiktokDisableComment",
-              "value": false,
-              "type": "boolean"
-            },
-            {
-              "id": "tiktok_disable_stitch",
-              "name": "tiktokDisableStitch",
-              "value": false,
-              "type": "boolean"
-            },
-            {
-              "id": "linkedin_person_id",
-              "name": "linkedinPersonId",
-              "value": "YOUR_LINKEDIN_PERSON_ID",
-              "type": "string"
-            },
-            {
-              "id": "facebook_page_id",
-              "name": "facebookPageId",
-              "value": "YOUR_FACEBOOK_PAGE_ID",
-              "type": "string"
-            },
-            {
-              "id": "instagram_business_id",
-              "name": "instagramBusinessId",
-              "value": "YOUR_INSTAGRAM_BUSINESS_ID",
-              "type": "string"
-            },
-            {
-              "id": "instagram_image_url",
-              "name": "instagramImageUrl",
-              "value": "https://example.com/image.jpg",
-              "type": "string"
-            },
-            {
-              "id": "topic_bank",
-              "name": "topicBank",
-              "value": "education | Share a practical tip that helps the audience save time | Teach something useful\nbehind_the_scenes | Show what happens before a post goes live | Humanize the process\ntrust | Explain why consistency matters more than chasing virality | Build credibility\nfaq | Answer a question people ask often | Remove friction and confusion\nproof | Share a small, believable win or result | Keep it grounded\nproduct | Highlight one feature or service benefit | Make the value concrete\ncommunity | Offer something helpful with no hard sell | Build goodwill\npromo | Make a soft offer that feels natural | Encourage action without pressure",
-              "type": "string"
-            },
-            {
-              "id": "compliance_rules",
-              "name": "complianceRules",
-              "value": "Avoid false claims, guarantees, deceptive urgency, hate, harassment, confidential data, or policy-violating content. Keep it factual, platform-native, and helpful.",
-              "type": "string"
-            },
-            {
-              "id": "planning_mode",
-              "name": "planningMode",
-              "value": "weekly",
-              "type": "string"
-            },
-            {
-              "id": "alert_slack_channel_id",
-              "name": "alertSlackChannelId",
-              "value": "C0123456789",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "b4a9eb70-cd64-4e5a-8449-e2fb6756f3da",
-      "name": "Weekly Brand Profile",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [
-        160,
-        3008
+        -624,
+        496
       ]
     },
     {
@@ -1261,13 +877,13 @@
         "text": "={{ \"*Publish failed:* \" + $json.publishPlatform + \" for \" + $json.brandName + \"\\n*Topic:* \" + ($json.selectedTopic || \"n/a\") + \"\\n*Error:* \" + ($json.publishErrorText || JSON.stringify($json.error || {})) }}",
         "otherOptions": {}
       },
-      "id": "bf5fcf80-fe5f-4b42-8a96-10c74dc79bdb",
+      "id": "748a52ea-7143-4bbb-9448-3122915dbe40",
       "name": "Publish Failure Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        7040,
-        3312
+        2992,
+        -16
       ],
       "webhookId": "f5998d16-b13b-4bd4-acce-f4ebe0383ddd",
       "credentials": {
@@ -1281,31 +897,32 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\n\nconst safeSlug = String(input.brandName || 'brand')\n  .toLowerCase()\n  .replace(/[^a-z0-9]+/g, '-')\n  .replace(/^-+|-+$/g, '')\n  .slice(0, 32) || 'brand';\nconst runKey = String(input.generatedAt || new Date().toISOString()).replace(/[^0-9a-z]/gi, '').slice(0, 24);\nconst assetBucket = 'social-media-assets';\n\nconst imagePrompt = [\n  `Create a high-end vertical social image for ${input.brandName}.`,\n  `Topic: ${input.selectedTopic}.`,\n  `Style: modern, clean, editorial, client-ready, natural light, realistic, no watermark, no logo, no text overlay.`,\n  `The image should feel trustworthy and polished for Instagram and Facebook.`\n].join(' ');\n\nconst videoPrompt = [\n  `Create a short vertical social video for ${input.brandName}.`,\n  `Topic: ${input.selectedTopic}.`,\n  `Recommended concept: ${input.recommended_video_idea || input.video_ideas?.[0] || 'create a practical, helpful short-form video'}.`,\n  `Style: polished, natural, platform-native, no watermark, no logo, no text overlay, clear pacing, suitable for TikTok.`,\n  `Keep it concise, engaging, and easy to approve.`\n].join(' ');\n\nconst instagramImageObjectPath = `${safeSlug}/${runKey}-instagram.png`;\nconst tiktokVideoObjectPath = `${safeSlug}/${runKey}-tiktok.mp4`;\n\nreturn [{ json: { ...input, assetBucket, assetRunKey: runKey, safeSlug, instagramImagePrompt: imagePrompt, tiktokVideoPrompt: videoPrompt, instagramImageObjectPath, tiktokVideoObjectPath, imageUploadMimeType: 'image/png', videoUploadMimeType: 'video/mp4', videoPollAttempt: 0 } }];"
       },
-      "id": "7ca451e3-c7d4-4de2-a0e3-a2d68512e24e",
+      "id": "3fed4e5e-7054-4609-a507-b209a03b8978",
       "name": "Asset Brief Builder",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2720,
-        3120
+        1064,
+        496
       ]
     },
     {
       "parameters": {
         "requestMethod": "POST",
         "url": "https://api.openai.com/v1/images/generations",
+        "responseFormat": "json",
         "jsonParameters": true,
         "options": {},
-        "bodyParametersJson": "{\n  \"model\": \"gpt-image-1.5\",\n  \"prompt\": \"={{ $json.instagramImagePrompt }}\",\n  \"size\": \"1024x1536\",\n  \"quality\": \"medium\",\n  \"n\": 1,\n  \"response_format\": \"b64_json\"\n}",
-        "headerParametersJson": "{\n  \"Authorization\": \"Bearer {{$env.OPENAI_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}"
+        "headerParametersJson": "{\n  \"Authorization\": \"Bearer {{$env.OPENAI_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}",
+        "bodyParametersJson": "{\n  \"model\": \"gpt-image-1.5\",\n  \"prompt\": \"={{ $json.instagramImagePrompt }}\",\n  \"size\": \"1024x1536\",\n  \"quality\": \"medium\",\n  \"n\": 1,\n  \"response_format\": \"b64_json\"\n}"
       },
-      "id": "d9d83d17-6444-4a50-b2e9-23b6c216ba99",
+      "id": "880dba69-5479-48e5-8430-341475a80dd0",
       "name": "OpenAI Image Generate",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 1,
       "position": [
-        2912,
-        3120
+        1280,
+        496
       ],
       "continueOnFail": true
     },
@@ -1313,13 +930,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nconst base64 = input?.data?.[0]?.b64_json || input?.data?.[0]?.base64 || input?.data?.[0]?.image_base64;\n\nif (!base64) {\n  return [{ json: { ...input, imagePrepareError: 'OpenAI image generation did not return base64 image data.' } }];\n}\n\nconst binary = await this.helpers.prepareBinaryData(\n  Buffer.from(base64, 'base64'),\n  'instagram-image.png',\n  'image/png'\n);\n\nreturn [{ json: { ...input }, binary: { data: binary } }];"
       },
-      "id": "06839c44-d2cf-4464-8201-0ba3f18779c7",
+      "id": "1e68b046-ec90-4e38-9567-34024c35f792",
       "name": "Download Instagram Image",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3104,
-        3120
+        1504,
+        496
       ],
       "continueOnFail": true
     },
@@ -1338,15 +955,27 @@
             }
           ]
         },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "apikey",
+              "value": "{{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "0ef79cc7-4726-4db9-a3aa-0c91f75926b0",
+      "id": "37e64d10-ecda-49e4-8c19-c2ad05ec6e3a",
       "name": "Upload Instagram Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3296,
-        3120
+        1728,
+        496
       ],
       "continueOnFail": true
     },
@@ -1380,15 +1009,23 @@
             }
           ]
         },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.OPENAI_API_KEY}}"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "cfb016a5-4a17-410f-ab55-4efcf43248c7",
+      "id": "ba8e6c22-85df-45b7-a104-8577ffc95a2a",
       "name": "OpenAI Video Create",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3504,
-        3120
+        1280,
+        720
       ],
       "continueOnFail": true
     },
@@ -1396,28 +1033,30 @@
       "parameters": {
         "amount": 180
       },
-      "id": "ca5966c0-a99b-4544-8167-00f70c1e27ff",
+      "id": "9fb5929d-3e23-416f-8129-01a8e9df68d5",
       "name": "Wait TikTok Video",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        3696,
-        3120
-      ],
-      "webhookId": "fddb2b6e-99e6-47a7-a11d-f12bc50f557e"
+        1504,
+        720
+      ]
     },
     {
       "parameters": {
+        "method": "GET",
         "url": "={{ \"https://api.openai.com/v1/videos/\" + $json.id }}",
-        "options": {}
+        "responseFormat": "json",
+        "options": {},
+        "headerParametersJson": "{\n  \"Authorization\": \"Bearer {{$env.OPENAI_API_KEY}}\"\n}"
       },
-      "id": "c36de1d2-7781-4aee-926e-e16e94eacb3a",
+      "id": "c5885e35-6d46-4e1c-abf6-631c62d277e5",
       "name": "Get TikTok Video Status",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3888,
-        3120
+        1728,
+        720
       ],
       "continueOnFail": true
     },
@@ -1425,13 +1064,13 @@
       "parameters": {
         "jsCode": "const input = $input.first().json;\nconst videoPollAttempt = Number(input.videoPollAttempt || 0) + 1;\nreturn [{ json: { ...input, videoPollAttempt } }];"
       },
-      "id": "6baffa53-417f-4d09-9080-4bf70739bcc3",
+      "id": "74232e4f-e010-48a5-b71a-095c3f777cec",
       "name": "TikTok Video Retry Count",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4240,
-        3248
+        1940,
+        880
       ]
     },
     {
@@ -1459,28 +1098,27 @@
         },
         "options": {}
       },
-      "id": "bcdc86b1-405f-40db-9738-19e2eeac2476",
+      "id": "d2fc88e9-6c85-4a23-a2dd-f976a082d6bc",
       "name": "TikTok Video Retry?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4432,
-        3248
+        2160,
+        880
       ]
     },
     {
       "parameters": {
         "amount": 180
       },
-      "id": "a87ff198-35dd-4ef0-b0f5-86d09f557516",
+      "id": "f5ea5a59-a5b9-49bb-a5df-45c802ed3134",
       "name": "Wait TikTok Retry",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        4848,
-        3632
-      ],
-      "webhookId": "11a9bb5d-52c5-4afe-939d-395056a9c8e8"
+        2380,
+        880
+      ]
     },
     {
       "parameters": {
@@ -1493,13 +1131,13 @@
           }
         }
       },
-      "id": "f563876c-88b4-486c-a0ff-09b57dc13dc2",
+      "id": "bbc8ea95-849b-4e72-a1e9-65db05900c07",
       "name": "Download TikTok Video",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4288,
-        2896
+        1940,
+        720
       ],
       "continueOnFail": true
     },
@@ -1518,15 +1156,27 @@
             }
           ]
         },
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            },
+            {
+              "name": "apikey",
+              "value": "{{$env.SUPABASE_SERVICE_ROLE_KEY}}"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "cba2bad7-03fa-4128-99a8-fd35b6b53d0c",
+      "id": "adf9b7c6-3fcf-4113-9498-09ef65293c7f",
       "name": "Upload TikTok Video",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4496,
-        2896
+        2160,
+        720
       ],
       "continueOnFail": true
     },
@@ -1534,26 +1184,26 @@
       "parameters": {
         "jsCode": "const getNodeJson = (name) => {\n  try {\n    return $(name).first().json;\n  } catch (error) {\n    return {};\n  }\n};\n\nconst brief = getNodeJson('Asset Brief Builder');\nconst imageUpload = getNodeJson('Upload Instagram Image');\nconst videoStatus = getNodeJson('Get TikTok Video Status');\nconst videoDownload = getNodeJson('Download TikTok Video');\nconst videoUpload = getNodeJson('Upload TikTok Video');\nconst fallback = $input.first().json;\n\nconst supabaseUrl = String($env.SUPABASE_URL || '').replace(/\\/$/, '');\nconst imageReady = Boolean(brief.instagramImageObjectPath && !imageUpload.error && !brief.imagePrepareError);\nconst videoReady = Boolean(brief.tiktokVideoObjectPath && ['completed', 'succeeded'].includes(videoStatus.status) && !videoDownload.error && !videoUpload.error);\n\nconst instagramImageUrl = imageReady\n  ? `${supabaseUrl}/storage/v1/object/public/${brief.assetBucket}/${brief.instagramImageObjectPath}`\n  : (brief.instagramImageUrl || fallback.instagramImageUrl || '');\nconst tiktokVideoUrl = videoReady\n  ? `${supabaseUrl}/storage/v1/object/public/${brief.assetBucket}/${brief.tiktokVideoObjectPath}`\n  : (brief.tiktokVideoUrl || fallback.tiktokVideoUrl || '');\n\nreturn [{\n  json: {\n    ...fallback,\n    ...brief,\n    instagramImageUrl,\n    tiktokVideoUrl,\n    assetStatus: imageReady && videoReady ? 'ready' : (imageReady || videoReady ? 'partial' : 'failed'),\n    assetGeneratedAt: new Date().toISOString(),\n    imageGenerationReady: imageReady,\n    videoGenerationReady: videoReady,\n    videoJobStatus: videoStatus.status || 'unknown'\n  }\n}];"
       },
-      "id": "14fde4d5-f568-47d7-b9d7-6b1305081837",
+      "id": "13014d9d-2ef0-4934-975c-34e635c9e2f1",
       "name": "Generated Media Assets",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4816,
-        3072
+        2380,
+        720
       ]
     },
     {
       "parameters": {
         "jsCode": "const fallback = $input.first().json;\nlet brief = {};\ntry {\n  brief = $('Asset Brief Builder').first().json;\n} catch (error) {\n  brief = {};\n}\nreturn [{ json: { ...fallback, ...brief, publishPlatform: 'TikTok', publishSucceeded: false, publishErrorText: 'TikTok video generation did not complete in time.' } }];"
       },
-      "id": "5f7c5c5a-a104-4861-b904-43385ad1af40",
+      "id": "a07caafa-5e32-46b5-9a92-c254357ef8e7",
       "name": "Mark TikTok Video Failed",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4640,
-        3264
+        2600,
+        880
       ]
     },
     {
@@ -1591,13 +1241,13 @@
         },
         "options": {}
       },
-      "id": "4fc41648-fbd0-4428-ba2b-01d11cd1a149",
+      "id": "8d2e4f6a-8d4f-4dd8-8ff9-0d0f6f4a93cf",
       "name": "TikTok Video Complete?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4144,
-        3072
+        1940,
+        560
       ]
     },
     {
@@ -1625,13 +1275,13 @@
         },
         "options": {}
       },
-      "id": "5670596e-a8fa-446a-bb77-9be7c166fa12",
+      "id": "d3f14b92-0d6a-4c67-8f57-3a97d0c6a0b1",
       "name": "Instagram Publish Ready?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5616,
-        3104
+        1520,
+        480
       ]
     },
     {
@@ -1659,13 +1309,13 @@
         },
         "options": {}
       },
-      "id": "89824d6d-56bc-42dd-bbb3-9959d02a3ae6",
+      "id": "6c7f6e46-0c53-4f0f-9cc5-c7d6b8136f74",
       "name": "TikTok Publish Ready?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        5152,
-        2960
+        1680,
+        688
       ]
     }
   ],
@@ -1682,22 +1332,11 @@
         ]
       ]
     },
-    "Weekly Schedule Trigger": {
-      "main": [
-        [
-          {
-            "node": "Weekly Brand Profile",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Brand Profile": {
       "main": [
         [
           {
-            "node": "Content Library",
+            "node": "Content Planner",
             "type": "main",
             "index": 0
           }
@@ -1708,7 +1347,7 @@
       "main": [
         [
           {
-            "node": "Video Idea Builder",
+            "node": "Content Generator",
             "type": "main",
             "index": 0
           }
@@ -1731,39 +1370,6 @@
         [
           {
             "node": "Approval Packager",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Plan Builder": {
-      "main": [
-        [
-          {
-            "node": "Weekly Creative Brief",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Plan Generator": {
-      "main": [
-        [
-          {
-            "node": "Weekly Plan QA",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Plan QA": {
-      "main": [
-        [
-          {
-            "node": "Weekly Audit Summary",
             "type": "main",
             "index": 0
           }
@@ -1814,6 +1420,28 @@
         ]
       ]
     },
+    "Run Audit Summary": {
+      "main": [
+        [
+          {
+            "node": "Daily Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Run Log": {
+      "main": [
+        [
+          {
+            "node": "Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Approved?": {
       "main": [
         [
@@ -1847,220 +1475,11 @@
         ]
       ]
     },
-    "Instagram Create Container": {
-      "main": [
-        [
-          {
-            "node": "Instagram Publish",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TikTok Ready?": {
-      "main": [
-        [
-          {
-            "node": "TikTok Publish Init",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "TikTok Draft Only",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Content Generator",
-            "type": "ai_languageModel",
-            "index": 0
-          },
-          {
-            "node": "Weekly Plan Generator",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Video Idea Builder": {
-      "main": [
-        [
-          {
-            "node": "Content Generator",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Creative Brief": {
-      "main": [
-        [
-          {
-            "node": "Weekly Plan Generator",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Brand Profile": {
-      "main": [
-        [
-          {
-            "node": "Content Library",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Content Library": {
-      "main": [
-        [
-          {
-            "node": "Planning Mode?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Run Audit Summary": {
-      "main": [
-        [
-          {
-            "node": "Daily Run Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Audit Summary": {
-      "main": [
-        [
-          {
-            "node": "Weekly Run Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Planning Mode?": {
-      "main": [
-        [
-          {
-            "node": "Weekly Plan Builder",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Content Planner",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "X Publish Context": {
       "main": [
         [
           {
             "node": "X Publish",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "LinkedIn Publish Context": {
-      "main": [
-        [
-          {
-            "node": "LinkedIn Publish",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Facebook Publish Context": {
-      "main": [
-        [
-          {
-            "node": "Facebook Publish",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Instagram Publish Context": {
-      "main": [
-        [
-          {
-            "node": "Instagram Publish Ready?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TikTok Publish Context": {
-      "main": [
-        [
-          {
-            "node": "TikTok Publish Ready?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Instagram Publish Ready?": {
-      "main": [
-        [
-          {
-            "node": "Instagram Publish",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Publish Failure Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TikTok Publish Ready?": {
-      "main": [
-        [
-          {
-            "node": "TikTok Publish Init",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Publish Failure Slack",
             "type": "main",
             "index": 0
           }
@@ -2078,11 +1497,11 @@
         ]
       ]
     },
-    "X Publish Failed?": {
+    "LinkedIn Publish Context": {
       "main": [
         [
           {
-            "node": "Publish Failure Slack",
+            "node": "LinkedIn Publish",
             "type": "main",
             "index": 0
           }
@@ -2100,11 +1519,11 @@
         ]
       ]
     },
-    "LinkedIn Publish Failed?": {
+    "Facebook Publish Context": {
       "main": [
         [
           {
-            "node": "Publish Failure Slack",
+            "node": "Facebook Publish",
             "type": "main",
             "index": 0
           }
@@ -2116,83 +1535,6 @@
         [
           {
             "node": "Facebook Publish Failed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Facebook Publish Failed?": {
-      "main": [
-        [
-          {
-            "node": "Publish Failure Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Instagram Publish": {
-      "main": [
-        [
-          {
-            "node": "Instagram Publish Failed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Instagram Publish Failed?": {
-      "main": [
-        [
-          {
-            "node": "Publish Failure Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TikTok Publish Init": {
-      "main": [
-        [
-          {
-            "node": "TikTok Publish Failed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "TikTok Publish Failed?": {
-      "main": [
-        [
-          {
-            "node": "Publish Failure Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Daily Run Log": {
-      "main": [
-        [
-          {
-            "node": "Approved?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Weekly Run Log": {
-      "main": [
-        [
-          {
-            "node": "Weekly Plan Slack",
             "type": "main",
             "index": 0
           }
@@ -2281,28 +1623,6 @@
         ]
       ]
     },
-    "Download TikTok Video": {
-      "main": [
-        [
-          {
-            "node": "Upload TikTok Video",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Upload TikTok Video": {
-      "main": [
-        [
-          {
-            "node": "Generated Media Assets",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "TikTok Video Retry Count": {
       "main": [
         [
@@ -2343,6 +1663,28 @@
         ]
       ]
     },
+    "Download TikTok Video": {
+      "main": [
+        [
+          {
+            "node": "Upload TikTok Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload TikTok Video": {
+      "main": [
+        [
+          {
+            "node": "Generated Media Assets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Mark TikTok Video Failed": {
       "main": [
         [
@@ -2376,12 +1718,176 @@
       "main": [
         [
           {
-            "node": "Instagram Publish Context",
+            "node": "Instagram Publish Ready?",
             "type": "main",
             "index": 0
           },
           {
-            "node": "TikTok Publish Context",
+            "node": "TikTok Publish Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Publish Ready?": {
+      "main": [
+        [
+          {
+            "node": "Instagram Publish",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Publish": {
+      "main": [
+        [
+          {
+            "node": "Instagram Publish Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Publish Ready?": {
+      "main": [
+        [
+          {
+            "node": "TikTok Publish Init",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Publish Init": {
+      "main": [
+        [
+          {
+            "node": "TikTok Publish Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "X Publish Failed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Publish Failed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook Publish Failed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Publish Failed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Publish Failed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Failure Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Create Container": {
+      "main": [
+        [
+          {
+            "node": "Instagram Publish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Ready?": {
+      "main": [
+        [
+          {
+            "node": "TikTok Publish Init",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "TikTok Draft Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram Publish Context": {
+      "main": [
+        [
+          {
+            "node": "Instagram Publish Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Publish Context": {
+      "main": [
+        [
+          {
+            "node": "TikTok Publish Ready?",
             "type": "main",
             "index": 0
           }
@@ -2395,11 +1901,10 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "d2becdcd-0b04-44d1-bd83-35b615139b14",
+  "versionId": "60a0b679-b5b2-4ebf-90fb-f1fe175183e2",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "c556b463c21b3cd46f5926696ed84e0ec276d75f80af743342577ec01c727f93"
   },
-  "id": "0o4dpxXP7BmWKq0x",
+  "id": "a0FHy1VeHAMSXU0A",
   "tags": []
 }
