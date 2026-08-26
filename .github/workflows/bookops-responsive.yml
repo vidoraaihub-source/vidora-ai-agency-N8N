@@ -1,4 +1,4 @@
-name: BookOps responsive patch
+name: BookOps readability patch
 
 on:
   push:
@@ -16,48 +16,66 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: bookops-v1-public
-      - name: Patch active tabs and responsive layout
+      - name: Enlarge UI and refine Add Note navigation
         run: |
           python - <<'PY'
           from pathlib import Path
           p = Path('bookops-v1/index.html')
           s = p.read_text()
 
-          old_active = ".nav button.active{background:#fff;color:#315b50;box-shadow:0 3px 12px rgba(25,61,49,.08)}"
-          new_active = ".nav button{transition:background .18s ease,color .18s ease,transform .18s ease}.nav button:hover{background:#e5eee9;color:#244f43}.nav button.active{background:var(--green);color:#fff;box-shadow:0 5px 14px rgba(14,78,64,.18)}"
-          if old_active not in s:
-              raise SystemExit('Active navigation CSS target not found')
-          s = s.replace(old_active, new_active)
-
-          old_mobile = "@media(max-width:800px){.app{grid-template-columns:1fr}.side{min-height:auto;flex-direction:row;position:sticky;top:0;z-index:10}.brand>div:last-child,.status{display:none}.nav{flex-direction:row}.nav button{width:auto}.main{padding:0 15px 36px}.content{width:100%;padding-top:34px}.grid,.form{grid-template-columns:1fr}}"
-          new_mobile = """@media(max-width:800px){
-          .app{grid-template-columns:1fr}
-          .side{min-height:auto;flex-direction:row;align-items:center;gap:8px;position:sticky;top:0;z-index:10;padding:9px 10px;overflow-x:auto;overscroll-behavior-x:contain;box-shadow:0 3px 12px rgba(20,50,40,.06)}
-          .brand{padding:0;margin-right:4px;flex:0 0 auto}.brand>div:last-child,.status{display:none}
-          .nav{flex-direction:row;flex:1;min-width:max-content;gap:6px}.nav button{width:auto;min-height:44px;padding:10px 12px;white-space:nowrap;border-radius:12px;font-size:14px}
-          .nav .add{margin-top:0}
-          .main{padding:0 14px 34px}.content{width:100%;padding-top:28px}
-          h1{font-size:28px}.eyebrow{font-size:10px}.sub{font-size:14px;line-height:1.5}
-          .head{height:auto;min-height:62px;gap:10px}.ht{font-size:13px}.hc{font-size:11px}.watch{font-size:11px;white-space:nowrap}
-          .empty{font-size:13px;min-height:180px}.grid,.form{grid-template-columns:1fr}.mt{font-size:13px}.mn{font-size:24px}.mc{font-size:12px;line-height:1.5}
-          .booktop{flex-direction:column;gap:14px}.booktop>.primary{width:100%;min-height:44px;font-size:13px}
-          .toolbar{flex-direction:column;align-items:stretch}.pill{align-self:flex-start;font-size:11px}.copy{font-size:12px}
-          .file,.search,input,select,textarea{font-size:16px;min-height:44px}.primary,.secondary{min-height:44px;font-size:13px}
-          .table{overflow-x:auto;-webkit-overflow-scrolling:touch}table{min-width:620px}th{font-size:11px}td{font-size:13px}.link{font-size:13px}.muted{font-size:11px}
-          .item{grid-template-columns:1fr;gap:10px}.it{font-size:13px}.im{font-size:12px;line-height:1.45}.item>div:last-child{display:flex;gap:7px;flex-wrap:wrap}.small{min-height:40px;padding:9px 12px;font-size:12px}
-          .modal{width:100%;max-height:92vh;overflow:auto}.drawer{width:100%}.event,.cov{font-size:12px}label{font-size:12px}.notice{font-size:12px}
+          marker = '/* BOOKOPS SCALE PASS V2 */'
+          if marker not in s:
+              css = r'''
+          /* BOOKOPS SCALE PASS V2 */
+          @media(min-width:801px){
+            .app{grid-template-columns:220px 1fr}
+            .sidebar{padding:22px 18px}
+            .brand{gap:12px;padding:6px 6px 28px}
+            .logo{width:34px;height:34px;font-size:16px}
+            .brand-name{font-size:16px}.brand-tag{font-size:9px;margin-top:5px}
+            .nav{gap:9px}.nav-btn,.add-btn{min-height:48px;padding:13px 14px;font-size:15px;gap:10px}.nav-ico{width:18px;height:18px;font-size:15px}
+            .rail-status{padding:14px 14px 15px;border-radius:14px}.status-title{font-size:12px}.status-copy{font-size:11px;margin-top:8px}.status-time{font-size:10px;margin-top:7px}
+            .main{padding:0 48px 64px}.content{width:min(1000px,calc(100vw - 310px));padding-top:70px}
+            .eyebrow{font-size:11px}h1{font-size:42px;margin:16px 0 12px}.subtitle{font-size:16px;line-height:1.6;margin-bottom:34px}
+            .attention-card{min-height:300px}.attention-head{height:74px;padding:18px 22px}.attention-title{font-size:14px}.attention-count{font-size:12px;margin-top:5px}.watchdog{font-size:12px;padding:9px 12px}
+            .empty-state{min-height:224px;padding:28px}.empty-icon{width:42px;height:42px;font-size:21px;margin-bottom:14px}.empty-title{font-size:15px}.empty-copy{font-size:13px;margin-top:9px}
+            .lower-grid{gap:18px;margin-top:22px}.mini-card{min-height:120px;padding:20px 22px}.mini-title{font-size:14px}.mini-number{font-size:28px}.mini-copy{font-size:13px;line-height:1.55;margin-top:18px}.active-pill{font-size:11px;padding:6px 10px}
+            .book-header{gap:24px;margin-bottom:28px}.primary{font-size:14px;padding:12px 16px;border-radius:11px}.secondary{font-size:13px;padding:11px 14px}.searchbar{font-size:14px;padding:13px 14px}.count-pill{font-size:12px;padding:8px 11px}
+            th,td{padding:14px 16px}th{font-size:12px}td{font-size:14px}.client-link{font-size:14px}.subtle{font-size:11px;margin-top:5px}.empty-table{font-size:13px;padding:54px 16px}
+            .import-card{padding:20px 22px}.import-title{font-size:14px}.import-copy{font-size:12px;line-height:1.6;margin:9px 0 15px}.file-input{font-size:13px;padding:13px}.chip{font-size:11px;padding:6px 9px}.notice{font-size:12px;padding:11px 13px}
+            label{font-size:12px;margin-bottom:7px}input,select,textarea{font-size:14px;padding:12px 13px}textarea{min-height:160px}.modal{width:min(620px,92vw);padding:24px}.modal-title{font-size:18px}.close{font-size:12px;padding:9px 11px}
+            .drawer{width:min(620px,92vw);padding:28px}.drawer h2{font-size:24px}.kv{grid-template-columns:150px 1fr;font-size:13px;padding:12px 0}.coverage-card,.task-card,.event{padding:14px;margin-top:10px}.coverage-title,.task-title{font-size:14px}.event{font-size:13px}.event-time{font-size:11px}
+            .today-list{padding:6px 22px 16px}.today-item{gap:18px;padding:17px 0}.today-item-title{font-size:14px}.today-meta{font-size:12px;line-height:1.5;margin-top:6px}.sm-btn{font-size:12px;padding:9px 11px}.task-badge{font-size:10px;padding:5px 8px}.info-pill{font-size:11px;padding:7px 9px}
           }
-          @media(max-width:420px){.main{padding-left:10px;padding-right:10px}.content{padding-top:22px}h1{font-size:25px}.watch{font-size:10px;padding:6px 7px}.head{padding-left:12px;padding-right:12px}.mini{padding:12px}.modalbg.open{padding:10px}}"""
-          if old_mobile not in s:
-              raise SystemExit('Mobile CSS target not found')
-          s = s.replace(old_mobile, new_mobile)
+          .add-btn{background:#fff;color:#315b50;border:1px solid #d9e2dc;box-shadow:0 2px 8px rgba(25,61,49,.05);transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
+          .add-btn:hover{background:#e5eee9;color:#244f43}.add-btn.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 5px 14px rgba(14,78,64,.18)}
+          @media(max-width:800px){
+            .sidebar{padding:10px}.nav-btn,.add-btn{font-size:14px;padding:10px 13px;min-height:46px}.main{padding:0 16px 38px}.content{padding-top:32px}.eyebrow{font-size:10px}h1{font-size:31px;line-height:1.08;margin:13px 0 10px}.subtitle{font-size:15px;line-height:1.55;margin-bottom:26px}
+            .attention-head{min-height:64px;height:auto;padding:15px 14px;gap:10px}.attention-title{font-size:13px}.attention-count{font-size:11px}.watchdog{font-size:10.5px;padding:7px 9px}.empty-state{min-height:190px}.empty-title{font-size:14px}.empty-copy{font-size:12.5px;line-height:1.5}
+            .mini-card{min-height:110px;padding:17px}.mini-title{font-size:13px}.mini-number{font-size:24px}.mini-copy{font-size:12.5px;line-height:1.5}.active-pill{font-size:10px}.book-header{gap:15px}.book-header .primary{font-size:14px}.searchbar{font-size:16px}.count-pill{font-size:11px}
+            th{font-size:11px}td,.client-link{font-size:13px}.subtle{font-size:11px}.import-title{font-size:13px}.import-copy{font-size:12px}.file-input{font-size:13px}.notice{font-size:12px}label{font-size:12px}.modal-title{font-size:17px}.today-item-title{font-size:13px}.today-meta{font-size:12px}.sm-btn{font-size:12px}.coverage-title,.task-title{font-size:13px}.event{font-size:12px}.event-time{font-size:10.5px}
+          }
+          @media(max-width:420px){.main{padding-left:12px;padding-right:12px}.content{padding-top:26px}h1{font-size:28px}.subtitle{font-size:14px}.watchdog{font-size:10px}}
+          '''
+              s = s.replace('</style>', css + '\n</style>')
+
+          old_nav = "function navTo(id){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));renderAll()}"
+          new_nav = "function navTo(id){document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===id));openAddNote.classList.remove('active');renderAll()}"
+          if old_nav in s:
+              s = s.replace(old_nav, new_nav)
+
+          old_note = "openAddNote.onclick=()=>noteModal.classList.add('open');closeNote.onclick=()=>noteModal.classList.remove('open');closeApproval.onclick=()=>approvalModal.classList.remove('open');toggleImport.onclick=()=>importPanel.classList.toggle('open');bookSearch.oninput=renderBook;"
+          new_note = "function setAddNoteState(open){openAddNote.classList.toggle('active',open);if(open){document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'))}else{const activeSection=document.querySelector('.section.active')?.id;document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===activeSection))}}openAddNote.onclick=()=>{noteModal.classList.add('open');setAddNoteState(true)};closeNote.onclick=()=>{noteModal.classList.remove('open');setAddNoteState(false)};noteModal.addEventListener('click',e=>{if(e.target===noteModal){noteModal.classList.remove('open');setAddNoteState(false)}});closeApproval.onclick=()=>approvalModal.classList.remove('open');toggleImport.onclick=()=>importPanel.classList.toggle('open');bookSearch.oninput=renderBook;"
+          if old_note in s:
+              s = s.replace(old_note, new_note)
+
           p.write_text(s)
           PY
-      - name: Commit patched BookOps
+      - name: Commit BookOps readability update
         run: |
           git config user.name "BookOps Builder"
           git config user.email "actions@users.noreply.github.com"
           git add bookops-v1/index.html
           git diff --cached --quiet && exit 0
-          git commit -m "Improve BookOps active navigation and mobile layout [skip ci]"
+          git commit -m "Enlarge BookOps UI and refine Add Note tab [skip ci]"
           git push origin bookops-v1-public
