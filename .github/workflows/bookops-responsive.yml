@@ -1,0 +1,63 @@
+name: BookOps responsive patch
+
+on:
+  push:
+    branches: [bookops-v1-public]
+    paths:
+      - '.github/workflows/bookops-responsive.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-bookops:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: bookops-v1-public
+      - name: Patch active tabs and responsive layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('bookops-v1/index.html')
+          s = p.read_text()
+
+          old_active = ".nav button.active{background:#fff;color:#315b50;box-shadow:0 3px 12px rgba(25,61,49,.08)}"
+          new_active = ".nav button{transition:background .18s ease,color .18s ease,transform .18s ease}.nav button:hover{background:#e5eee9;color:#244f43}.nav button.active{background:var(--green);color:#fff;box-shadow:0 5px 14px rgba(14,78,64,.18)}"
+          if old_active not in s:
+              raise SystemExit('Active navigation CSS target not found')
+          s = s.replace(old_active, new_active)
+
+          old_mobile = "@media(max-width:800px){.app{grid-template-columns:1fr}.side{min-height:auto;flex-direction:row;position:sticky;top:0;z-index:10}.brand>div:last-child,.status{display:none}.nav{flex-direction:row}.nav button{width:auto}.main{padding:0 15px 36px}.content{width:100%;padding-top:34px}.grid,.form{grid-template-columns:1fr}}"
+          new_mobile = """@media(max-width:800px){
+          .app{grid-template-columns:1fr}
+          .side{min-height:auto;flex-direction:row;align-items:center;gap:8px;position:sticky;top:0;z-index:10;padding:9px 10px;overflow-x:auto;overscroll-behavior-x:contain;box-shadow:0 3px 12px rgba(20,50,40,.06)}
+          .brand{padding:0;margin-right:4px;flex:0 0 auto}.brand>div:last-child,.status{display:none}
+          .nav{flex-direction:row;flex:1;min-width:max-content;gap:6px}.nav button{width:auto;min-height:44px;padding:10px 12px;white-space:nowrap;border-radius:12px;font-size:14px}
+          .nav .add{margin-top:0}
+          .main{padding:0 14px 34px}.content{width:100%;padding-top:28px}
+          h1{font-size:28px}.eyebrow{font-size:10px}.sub{font-size:14px;line-height:1.5}
+          .head{height:auto;min-height:62px;gap:10px}.ht{font-size:13px}.hc{font-size:11px}.watch{font-size:11px;white-space:nowrap}
+          .empty{font-size:13px;min-height:180px}.grid,.form{grid-template-columns:1fr}.mt{font-size:13px}.mn{font-size:24px}.mc{font-size:12px;line-height:1.5}
+          .booktop{flex-direction:column;gap:14px}.booktop>.primary{width:100%;min-height:44px;font-size:13px}
+          .toolbar{flex-direction:column;align-items:stretch}.pill{align-self:flex-start;font-size:11px}.copy{font-size:12px}
+          .file,.search,input,select,textarea{font-size:16px;min-height:44px}.primary,.secondary{min-height:44px;font-size:13px}
+          .table{overflow-x:auto;-webkit-overflow-scrolling:touch}table{min-width:620px}th{font-size:11px}td{font-size:13px}.link{font-size:13px}.muted{font-size:11px}
+          .item{grid-template-columns:1fr;gap:10px}.it{font-size:13px}.im{font-size:12px;line-height:1.45}.item>div:last-child{display:flex;gap:7px;flex-wrap:wrap}.small{min-height:40px;padding:9px 12px;font-size:12px}
+          .modal{width:100%;max-height:92vh;overflow:auto}.drawer{width:100%}.event,.cov{font-size:12px}label{font-size:12px}.notice{font-size:12px}
+          }
+          @media(max-width:420px){.main{padding-left:10px;padding-right:10px}.content{padding-top:22px}h1{font-size:25px}.watch{font-size:10px;padding:6px 7px}.head{padding-left:12px;padding-right:12px}.mini{padding:12px}.modalbg.open{padding:10px}}"""
+          if old_mobile not in s:
+              raise SystemExit('Mobile CSS target not found')
+          s = s.replace(old_mobile, new_mobile)
+          p.write_text(s)
+          PY
+      - name: Commit patched BookOps
+        run: |
+          git config user.name "BookOps Builder"
+          git config user.email "actions@users.noreply.github.com"
+          git add bookops-v1/index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Improve BookOps active navigation and mobile layout [skip ci]"
+          git push origin bookops-v1-public
