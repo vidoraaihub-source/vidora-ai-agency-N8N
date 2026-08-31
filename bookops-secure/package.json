@@ -1,0 +1,17 @@
+{
+  "name": "bookops-secure-v1",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 migrations apply bookops-prod --local",
+    "db:remote": "wrangler d1 migrations apply bookops-prod --remote",
+    "check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "wrangler": "^4.32.0"
+  }
+}
